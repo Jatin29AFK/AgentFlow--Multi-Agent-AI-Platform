@@ -22,7 +22,7 @@ def _row_to_dict(row) -> Dict[str, Any]:
     except json.JSONDecodeError:
         data["trace"] = []
 
-        memories_json = data.get("retrieved_memories_json") or "[]"
+    memories_json = data.get("retrieved_memories_json") or "[]"
     try:
         data["retrieved_memories"] = json.loads(memories_json)
     except json.JSONDecodeError:
@@ -33,7 +33,7 @@ def _row_to_dict(row) -> Dict[str, Any]:
     data.pop("trace_json", None)
     return data
 
-def save_agent_run(result: Dict[str, Any]) -> Dict[str, str]:
+def save_agent_run(result: Dict[str, Any], workspace_id: str) -> Dict[str, str]:
     """
     Saves one full agent workflow run into SQLite.
     Returns run_id and created_at.
@@ -51,6 +51,7 @@ def save_agent_run(result: Dict[str, Any]) -> Dict[str, str]:
         """
         INSERT INTO agent_runs (
             id,
+            workspace_id,
             task,
             retrieved_memories_json,
             memory_context,
@@ -73,10 +74,11 @@ def save_agent_run(result: Dict[str, Any]) -> Dict[str, str]:
             trace_json,
             created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             run_id,
+            workspace_id,
             result.get("task", ""),
             json.dumps(retrieved_memories),
             result.get("memory_context", ""),
@@ -112,7 +114,7 @@ def save_agent_run(result: Dict[str, Any]) -> Dict[str, str]:
         "created_at": created_at,
     }
 
-def list_agent_runs(limit: int = 20) -> List[Dict[str, Any]]:
+def list_agent_runs(workspace_id: str, limit: int = 20) -> List[Dict[str, Any]]:
     """
     Returns recent agent runs.
     Only returns summary-level fields.
@@ -133,10 +135,11 @@ def list_agent_runs(limit: int = 20) -> List[Dict[str, Any]]:
             needs_human_review,
             created_at
         FROM agent_runs
+        WHERE workspace_id = ?
         ORDER BY created_at DESC
         LIMIT ?
         """,
-        (limit,),
+        (workspace_id, limit),
     )
 
     rows = cursor.fetchall()
@@ -153,7 +156,10 @@ def list_agent_runs(limit: int = 20) -> List[Dict[str, Any]]:
     return results
 
 
-def list_pending_human_reviews(limit: int = 20) -> List[Dict[str, Any]]:
+def list_pending_human_reviews(
+    workspace_id: str,
+    limit: int = 20,
+) -> List[Dict[str, Any]]:
     """
     Returns runs that need human review.
     """
@@ -173,11 +179,11 @@ def list_pending_human_reviews(limit: int = 20) -> List[Dict[str, Any]]:
             needs_human_review,
             created_at
         FROM agent_runs
-        WHERE status = 'NEEDS_HUMAN_REVIEW'
+        WHERE workspace_id = ? AND status = 'NEEDS_HUMAN_REVIEW'
         ORDER BY created_at DESC
         LIMIT ?
         """,
-        (limit,),
+        (workspace_id, limit),
     )
 
     rows = cursor.fetchall()
@@ -194,7 +200,7 @@ def list_pending_human_reviews(limit: int = 20) -> List[Dict[str, Any]]:
     return results
 
 
-def get_agent_run_by_id(run_id: str) -> Optional[Dict[str, Any]]:
+def get_agent_run_by_id(run_id: str, workspace_id: str) -> Optional[Dict[str, Any]]:
     """
     Returns full details of a single run.
     """
@@ -205,9 +211,9 @@ def get_agent_run_by_id(run_id: str) -> Optional[Dict[str, Any]]:
         """
         SELECT *
         FROM agent_runs
-        WHERE id = ?
+        WHERE id = ? AND workspace_id = ?
         """,
-        (run_id,),
+        (run_id, workspace_id),
     )
 
     row = cursor.fetchone()
@@ -221,6 +227,7 @@ def get_agent_run_by_id(run_id: str) -> Optional[Dict[str, Any]]:
 
 def update_agent_run_after_human_review(
     run_id: str,
+    workspace_id: str,
     status: str,
     final_answer: str,
     human_decision: str,
@@ -230,7 +237,7 @@ def update_agent_run_after_human_review(
     Updates a run after human review.
     Also appends a message to the trace.
     """
-    existing_run = get_agent_run_by_id(run_id)
+    existing_run = get_agent_run_by_id(run_id, workspace_id)
 
     if existing_run is None:
         return None
@@ -273,4 +280,4 @@ def update_agent_run_after_human_review(
     connection.commit()
     connection.close()
 
-    return get_agent_run_by_id(run_id)
+    return get_agent_run_by_id(run_id, workspace_id)

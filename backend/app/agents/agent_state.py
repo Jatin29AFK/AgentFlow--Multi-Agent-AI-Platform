@@ -3,6 +3,7 @@ from typing import List, Optional, TypedDict
 
 class AgentState(TypedDict):
     task: str
+    workspace_id: str
 
     retrieved_memories: List[str]
     memory_context: str

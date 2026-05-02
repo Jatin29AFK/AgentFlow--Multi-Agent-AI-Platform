@@ -6,11 +6,15 @@ from app.repositories.memory_repository import create_memory, search_memories
 from app.services.llm_service import LLMService
 
 
-def build_memory_context(task: str, limit: int = 5) -> Dict[str, Any]:
+def build_memory_context(
+    task: str,
+    workspace_id: str,
+    limit: int = 5,
+) -> Dict[str, Any]:
     """
     Searches relevant memories for a task and formats them for agent prompts.
     """
-    memories = search_memories(task, limit=limit)
+    memories = search_memories(task, workspace_id=workspace_id, limit=limit)
 
     if not memories:
         return {
@@ -68,6 +72,7 @@ def _extract_json_list(text: str) -> List[Dict[str, Any]]:
 def extract_and_save_memories_from_run(
     run: Dict[str, Any],
     run_id: str,
+    workspace_id: str,
 ) -> List[Dict[str, Any]]:
     """
     Uses LLM to extract useful long-term memories from a completed run.
@@ -159,6 +164,7 @@ If there is nothing worth remembering, return [].
         importance = item.get("importance", 3)
 
         saved_memory = create_memory(
+            workspace_id=workspace_id,
             content=content,
             source_run_id=run_id,
             tags=tags,

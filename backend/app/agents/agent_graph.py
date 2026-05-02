@@ -106,9 +106,10 @@ def build_agent_graph():
 agent_graph = build_agent_graph()
 
 
-def run_agent_workflow(task: str) -> AgentState:
+def run_agent_workflow(task: str, workspace_id: str) -> AgentState:
     initial_state: AgentState = {
         "task": task,
+        "workspace_id": workspace_id,
 
         "retrieved_memories": [],
         "memory_context": "No memory retrieved yet.",

@@ -126,7 +126,11 @@ def memory_retriever_node(state: AgentState) -> AgentState:
     - Specialist agents should also use relevant memory.
     - This makes AgentFlow more personalized and consistent.
     """
-    memory_data = build_memory_context(state["task"], limit=5)
+    memory_data = build_memory_context(
+        state["task"],
+        workspace_id=state["workspace_id"],
+        limit=5,
+    )
 
     trace = state.get("trace", [])
 

@@ -148,6 +148,13 @@ def init_db():
         "TEXT"
     )
 
+    _add_column_if_missing(
+        cursor,
+        "agent_runs",
+        "workspace_id",
+        "TEXT DEFAULT 'default-workspace'"
+    )
+
     # -------------------------------
     # Agent Memories Table
     # -------------------------------
@@ -155,6 +162,7 @@ def init_db():
         """
         CREATE TABLE IF NOT EXISTS agent_memories (
             id TEXT PRIMARY KEY,
+            workspace_id TEXT DEFAULT 'default-workspace',
             content TEXT NOT NULL,
             source_run_id TEXT,
             tags_json TEXT DEFAULT '[]',
@@ -163,6 +171,13 @@ def init_db():
             updated_at TEXT NOT NULL
         );
         """
+    )
+
+    _add_column_if_missing(
+        cursor,
+        "agent_memories",
+        "workspace_id",
+        "TEXT DEFAULT 'default-workspace'"
     )
 
     connection.commit()

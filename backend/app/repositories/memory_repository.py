@@ -29,6 +29,7 @@ def _row_to_memory(row) -> Dict[str, Any]:
 
 
 def create_memory(
+    workspace_id: str,
     content: str,
     source_run_id: Optional[str] = None,
     tags: Optional[List[str]] = None,
@@ -51,6 +52,7 @@ def create_memory(
         """
         INSERT INTO agent_memories (
             id,
+            workspace_id,
             content,
             source_run_id,
             tags_json,
@@ -58,10 +60,11 @@ def create_memory(
             created_at,
             updated_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             memory_id,
+            workspace_id,
             content.strip(),
             source_run_id,
             json.dumps(tags),
@@ -76,6 +79,7 @@ def create_memory(
 
     return {
         "id": memory_id,
+        "workspace_id": workspace_id,
         "content": content.strip(),
         "source_run_id": source_run_id,
         "tags": tags,
@@ -85,7 +89,7 @@ def create_memory(
     }
 
 
-def list_memories(limit: int = 50) -> List[Dict[str, Any]]:
+def list_memories(workspace_id: str, limit: int = 50) -> List[Dict[str, Any]]:
     """
     Returns latest memories.
     """
@@ -96,10 +100,11 @@ def list_memories(limit: int = 50) -> List[Dict[str, Any]]:
         """
         SELECT *
         FROM agent_memories
+        WHERE workspace_id = ?
         ORDER BY created_at DESC
         LIMIT ?
         """,
-        (limit,),
+        (workspace_id, limit),
     )
 
     rows = cursor.fetchall()
@@ -108,7 +113,7 @@ def list_memories(limit: int = 50) -> List[Dict[str, Any]]:
     return [_row_to_memory(row) for row in rows]
 
 
-def get_memory_by_id(memory_id: str) -> Optional[Dict[str, Any]]:
+def get_memory_by_id(memory_id: str, workspace_id: str) -> Optional[Dict[str, Any]]:
     """
     Returns one memory by ID.
     """
@@ -119,9 +124,9 @@ def get_memory_by_id(memory_id: str) -> Optional[Dict[str, Any]]:
         """
         SELECT *
         FROM agent_memories
-        WHERE id = ?
+        WHERE id = ? AND workspace_id = ?
         """,
-        (memory_id,),
+        (memory_id, workspace_id),
     )
 
     row = cursor.fetchone()
@@ -133,7 +138,7 @@ def get_memory_by_id(memory_id: str) -> Optional[Dict[str, Any]]:
     return _row_to_memory(row)
 
 
-def delete_memory(memory_id: str) -> bool:
+def delete_memory(memory_id: str, workspace_id: str) -> bool:
     """
     Deletes one memory by ID.
     """
@@ -143,9 +148,9 @@ def delete_memory(memory_id: str) -> bool:
     cursor.execute(
         """
         DELETE FROM agent_memories
-        WHERE id = ?
+        WHERE id = ? AND workspace_id = ?
         """,
-        (memory_id,),
+        (memory_id, workspace_id),
     )
 
     deleted = cursor.rowcount > 0
@@ -172,14 +177,18 @@ def _tokenize(text: str) -> set:
     )
 
 
-def search_memories(query: str, limit: int = 5) -> List[Dict[str, Any]]:
+def search_memories(
+    query: str,
+    workspace_id: str,
+    limit: int = 5,
+) -> List[Dict[str, Any]]:
     """
     Simple keyword-based memory search.
 
     This is not vector search yet.
     It checks word overlap between query and memory content.
     """
-    all_memories = list_memories(limit=500)
+    all_memories = list_memories(workspace_id=workspace_id, limit=500)
     query_tokens = _tokenize(query)
 
     scored_memories = []

@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Header, HTTPException, Query
 
 from app.agents.agent_graph import run_agent_workflow
 from app.repositories.agent_run_repository import (
@@ -23,6 +23,10 @@ from app.services.memory_service import extract_and_save_memories_from_run
 
 
 router = APIRouter(prefix="/agent", tags=["Agent Workflow"])
+
+
+def _workspace_id_header(x_workspace_id: str | None) -> str:
+    return (x_workspace_id or "default-workspace").strip() or "default-workspace"
 
 
 def _build_agent_run_response(run: dict) -> AgentRunResponse:
@@ -62,15 +66,20 @@ def _build_agent_run_response(run: dict) -> AgentRunResponse:
 
 
 @router.post("/run", response_model=AgentRunResponse)
-def run_agent(request: AgentRunRequest):
+def run_agent(
+    request: AgentRunRequest,
+    x_workspace_id: str | None = Header(default=None),
+):
     try:
-        result = run_agent_workflow(request.task)
-        saved_run = save_agent_run(result)
+        workspace_id = _workspace_id_header(x_workspace_id)
+        result = run_agent_workflow(request.task, workspace_id)
+        saved_run = save_agent_run(result, workspace_id)
 
         if result.get("status") == "COMPLETED":
             extract_and_save_memories_from_run(
                 run=result,
                 run_id=saved_run["run_id"],
+                workspace_id=workspace_id,
             )
 
         run_for_response = {
@@ -93,10 +102,14 @@ def run_agent(request: AgentRunRequest):
 
 @router.get("/runs", response_model=List[AgentRunSummaryResponse])
 def get_runs(
-    limit: int = Query(default=20, ge=1, le=100)
+    limit: int = Query(default=20, ge=1, le=100),
+    x_workspace_id: str | None = Header(default=None),
 ):
     try:
-        return list_agent_runs(limit=limit)
+        return list_agent_runs(
+            workspace_id=_workspace_id_header(x_workspace_id),
+            limit=limit,
+        )
 
     except Exception as e:
         raise HTTPException(
@@ -107,10 +120,14 @@ def get_runs(
 
 @router.get("/reviews/pending", response_model=List[AgentRunSummaryResponse])
 def get_pending_reviews(
-    limit: int = Query(default=20, ge=1, le=100)
+    limit: int = Query(default=20, ge=1, le=100),
+    x_workspace_id: str | None = Header(default=None),
 ):
     try:
-        return list_pending_human_reviews(limit=limit)
+        return list_pending_human_reviews(
+            workspace_id=_workspace_id_header(x_workspace_id),
+            limit=limit,
+        )
 
     except Exception as e:
         raise HTTPException(
@@ -120,9 +137,12 @@ def get_pending_reviews(
 
 
 @router.get("/runs/{run_id}", response_model=AgentRunResponse)
-def get_run_detail(run_id: str):
+def get_run_detail(
+    run_id: str,
+    x_workspace_id: str | None = Header(default=None),
+):
     try:
-        run = get_agent_run_by_id(run_id)
+        run = get_agent_run_by_id(run_id, _workspace_id_header(x_workspace_id))
 
         if run is None:
             raise HTTPException(
@@ -143,9 +163,14 @@ def get_run_detail(run_id: str):
 
 
 @router.post("/runs/{run_id}/human-review", response_model=AgentRunResponse)
-def submit_human_review(run_id: str, request: HumanReviewRequest):
+def submit_human_review(
+    run_id: str,
+    request: HumanReviewRequest,
+    x_workspace_id: str | None = Header(default=None),
+):
     try:
-        run = get_agent_run_by_id(run_id)
+        workspace_id = _workspace_id_header(x_workspace_id)
+        run = get_agent_run_by_id(run_id, workspace_id)
 
         if run is None:
             raise HTTPException(
@@ -160,6 +185,7 @@ def submit_human_review(run_id: str, request: HumanReviewRequest):
             final_answer = run["execution_result"]
             updated_run = update_agent_run_after_human_review(
                 run_id=run_id,
+                workspace_id=workspace_id,
                 status="COMPLETED",
                 final_answer=final_answer,
                 human_decision="approved",
@@ -180,6 +206,7 @@ def submit_human_review(run_id: str, request: HumanReviewRequest):
 
             updated_run = update_agent_run_after_human_review(
                 run_id=run_id,
+                workspace_id=workspace_id,
                 status="COMPLETED",
                 final_answer=final_answer,
                 human_decision="revised",
@@ -196,6 +223,7 @@ def submit_human_review(run_id: str, request: HumanReviewRequest):
 
             updated_run = update_agent_run_after_human_review(
                 run_id=run_id,
+                workspace_id=workspace_id,
                 status="REJECTED",
                 final_answer=final_answer,
                 human_decision="rejected",
