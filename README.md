@@ -602,56 +602,6 @@ AgentFlow/
 
 ---
 
-## Screenshots
-
-> Add or update screenshots inside `docs/screenshots/`.
-
-### Dashboard
-
-![AgentFlow Dashboard](docs/screenshots/dashboard.png)
-
-### Dashboard Overview
-
-![Dashboard Overview](docs/screenshots/dashboard-overview.png)
-
-### Agent Run
-
-![Agent Run](docs/screenshots/agent-run.png)
-
-### Agent Run Result
-
-![Agent Run Result](docs/screenshots/agent-run-result.png)
-
-### Trace Timeline
-
-![Trace Timeline](docs/screenshots/trace-timeline.png)
-
-### Chat Playground
-
-![Chat Playground](docs/screenshots/chat-playground.png)
-
-### Run History
-
-![Run History](docs/screenshots/history.png)
-
-### Run History Search and Filters
-
-![Run History Search and Filters](docs/screenshots/history-search-filter.png)
-
-### Human Review
-
-![Human Review](docs/screenshots/human-review.png)
-
-### Memory Management
-
-![Memory Management](docs/screenshots/memory-management.png)
-
-### Swagger API Docs
-
-![API Docs](docs/screenshots/api-docs.png)
-
----
-
 ## Local Setup
 
 ### Prerequisites
