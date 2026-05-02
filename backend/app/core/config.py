@@ -12,7 +12,6 @@ class Settings(BaseSettings):
     GROQ_MODEL: str = "llama-3.1-8b-instant"
 
     SQLITE_DB_PATH: str = "agentflow.db"
-
     HUMAN_REVIEW_SCORE_THRESHOLD: int = 7
 
     ALLOWED_ORIGINS: str = (
@@ -26,9 +25,9 @@ class Settings(BaseSettings):
         env_file = ".env"
 
     @property
-    def allowed_origins_list(self) -> List[str]:
+    def cors_origins_list(self) -> List[str]:
         return [
-            origin.strip()
+            origin.strip().rstrip("/")
             for origin in self.ALLOWED_ORIGINS.split(",")
             if origin.strip()
         ]
