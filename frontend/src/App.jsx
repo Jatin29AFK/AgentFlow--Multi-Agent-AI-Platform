@@ -53,12 +53,12 @@ function App() {
     });
 
     const text = await response.text();
-    let data = null;
+    let data;
 
     try {
       data = text ? JSON.parse(text) : null;
     } catch {
-      data = text;
+      data = text || null;
     }
 
     if (!response.ok) {
@@ -275,9 +275,15 @@ function App() {
   useEffect(() => {
     async function loadInitialData() {
       try {
-        await fetchRuns();
-        await fetchPendingReviews();
-        await fetchMemories();
+        const [runsData, reviewsData, memoriesData] = await Promise.all([
+          apiRequest("/agent/runs?limit=20"),
+          apiRequest("/agent/reviews/pending?limit=20"),
+          apiRequest("/memory?limit=50"),
+        ]);
+
+        setRuns(Array.isArray(runsData) ? runsData : []);
+        setPendingReviews(Array.isArray(reviewsData) ? reviewsData : []);
+        setMemories(Array.isArray(memoriesData) ? memoriesData : []);
       } catch (err) {
         setError(err.message);
       }
