@@ -20,7 +20,9 @@ class Settings(BaseSettings):
         "http://localhost:5174,"
         "http://127.0.0.1:5174"
     )
-    ALLOWED_ORIGIN_REGEX: str = r"^https://.*\.vercel\.app$"
+    ALLOWED_ORIGIN_REGEX: str = (
+        r"^http://(localhost|127\.0\.0\.1):\d+$|^https://.*\.vercel\.app$"
+    )
 
     class Config:
         env_file = ".env"

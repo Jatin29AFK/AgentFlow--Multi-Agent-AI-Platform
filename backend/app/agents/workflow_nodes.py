@@ -91,8 +91,16 @@ def _fallback_tool_selection(task: str) -> str:
     """
     task_lower = task.lower()
 
+    writing_keywords = [
+        "email", "follow-up", "follow up", "resume", "linkedin",
+        "cover letter", "caption", "message", "rewrite", "post",
+        "summary", "introduction",
+    ]
+
     calculator_keywords = [
-        "calculate", "calculation", "compute", "solve", "+", "-", "*", "/", "%"
+        "calculate", "calculation", "compute", "solve", "math",
+        "percentage", "percent", "total", "sum", "difference",
+        "multiply", "division", "divide",
     ]
 
     text_stats_keywords = [
@@ -103,6 +111,16 @@ def _fallback_tool_selection(task: str) -> str:
     keyword_keywords = [
         "keywords", "extract keywords", "important terms", "ats keywords"
     ]
+
+    arithmetic_expression_pattern = re.compile(
+        r"^\s*[-+()]?\d+(\.\d+)?(\s*[-+*/%]\s*[-+()]?\d+(\.\d+)?)+\s*$"
+    )
+
+    if any(keyword in task_lower for keyword in writing_keywords):
+        return "none"
+
+    if arithmetic_expression_pattern.match(task.strip()):
+        return "calculator"
 
     if any(keyword in task_lower for keyword in calculator_keywords):
         return "calculator"
