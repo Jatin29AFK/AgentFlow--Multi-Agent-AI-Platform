@@ -337,48 +337,28 @@ This helps debug agent decisions and makes the system observable.
 
 ---
 
-### Polished Dashboard UX
+## Screenshots
 
-The frontend has been upgraded into a more product-like dashboard experience.
+### Dashboard
+![AgentFlow Dashboard](docs/screenshots/dashboard.png)
 
-Current UI improvements include:
+### Run Agent
+![Run Agent](docs/screenshots/run-agent.png)
 
-- Custom AgentFlow logo and favicon
-- Browser tab title set to `AgentFlow`
-- Logo click resets the app to a clean home state
-- Wider responsive layout
-- Layered background treatment
-- Polished glass-style cards and panels
-- Improved hover states and visual hierarchy
-- Fixed footer with creator branding
-- Consistent empty states across tabs
-- Helper shortcut hints under textareas
-- Overview statistics for recent runs, completed runs, pending reviews, and average score
-- Refresh data action
-- Copy API URL action
-- Last updated indicator
-- Tab badges/counts for history, reviews, and memory
+![Run Agent](docs/screenshots/run-agent2.png)
 
----
+### Run History
+![Run History](docs/screenshots/history.png)
 
-### Productivity Actions
+### Human Reviews
+![Human Reviews](docs/screenshots/reviews.png)
 
-AgentFlow includes several practical UX actions:
+### Memory
+![Memory](docs/screenshots/memory.png)
 
-- Copy final answer
-- Copy trace timeline
-- Copy API URL
-- Copy task
-- Reuse task from previous runs
-- Reuse task from chat messages
-- Reuse task from review items
-- Clear task input
-- Clear chat session
-- Keyboard shortcut: `Ctrl/Cmd + Enter`
+### Chat Playground
+![Chat Playground](docs/screenshots/chat-playground.png)
 
-These features make the dashboard easier to use during demos and testing.
-
----
 
 ## Tech Stack
 
@@ -753,31 +733,6 @@ VITE_API_BASE_URL=http://127.0.0.1:8000
 
 ---
 
-## Workspace Header
-
-AgentFlow supports browser-specific workspaces for safer deployed demos.
-
-The frontend sends this header with workspace-scoped API requests:
-
-```txt
-X-Workspace-Id: workspace_xxxxx
-```
-
-Workspace isolation applies to:
-
-- `/agent/run`
-- `/agent/runs`
-- `/agent/runs/{run_id}`
-- `/agent/reviews/pending`
-- `/agent/runs/{run_id}/human-review`
-- `/memory`
-- `/memory/search`
-- `/memory/{memory_id}`
-
-This ensures that each browser workspace sees only its own runs, pending reviews, and memories.
-
----
-
 ## API Endpoints
 
 ### Health
@@ -1095,23 +1050,7 @@ ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5174,https://agentflow.ve
 
 ---
 
-## CORS and Deployment Notes
-
-If the deployed frontend URL changes, update backend environment variable:
-
-```env
-ALLOWED_ORIGINS=https://your-new-vercel-url.vercel.app
-```
-
-If you test local frontend with deployed backend, include local origins too:
-
-```env
-ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5174,https://your-vercel-url.vercel.app
-```
-
----
-
-## Important Note About SQLite
+## Note About SQLite
 
 This project currently uses SQLite for simplicity and beginner-friendly local development.
 
@@ -1159,20 +1098,6 @@ This ensures:
 - Pending reviews are workspace-specific
 - Memory extraction does not leak across users
 - Deployed demo users do not share the same global history
-
----
-
-## Security Notes
-
-This project follows basic safety practices:
-
-- API keys are stored in `.env`
-- `.env` is ignored using `.gitignore`
-- `.env.example` is provided for setup reference
-- CORS origins are configurable through environment variables
-- Browser-specific workspace IDs isolate demo data
-- Human review is triggered for low-confidence outputs
-- Backend tools are implemented safely instead of using unrestricted code execution
 
 ---
 
