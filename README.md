@@ -8,7 +8,7 @@
 ![SQLite](https://img.shields.io/badge/SQLite-Local_DB-lightgrey)
 ![Vite](https://img.shields.io/badge/Vite-Frontend_Build-purple)
 ![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-UI_Styling-38B2AC)
-![License](https://img.shields.io/badge/License-MIT-yellow)
+![Status](https://img.shields.io/badge/Status-Portfolio_Project-gold)
 
 AgentFlow is a full-stack **multi-agent AI orchestration platform** built with **FastAPI, LangGraph, Groq, React, SQLite, Vite, and Tailwind CSS**.
 
@@ -16,12 +16,20 @@ It provides a polished AI workflow dashboard where users can run supervisor-led 
 
 This project is built to showcase practical **AI engineering**, **agentic AI**, **human-in-the-loop AI**, and **full-stack GenAI system design** skills beyond a basic chatbot.
 
+## Why It Is Worth Exploring
+
+- It demonstrates a real **stateful agent workflow**, not just prompt-in and text-out chat.
+- The backend includes **routing, tools, memory, scoring, and human review** in one flow.
+- The frontend turns those internals into a product-style dashboard with **history, traceability, and review operations**.
+- It is intentionally scoped as a **portfolio-quality engineering project** that shows how agent systems can be structured end to end.
+
 ---
 
 ## Live Demo
 
 - **Frontend App:** https://agent-flow-five-phi.vercel.app
 - **Backend API:** https://agentflow-mlmp.onrender.com
+- **LinkedIn Post Draft:** [docs/linkedin-post.md](docs/linkedin-post.md)
 
 ---
 
@@ -43,6 +51,21 @@ This project is built to showcase practical **AI engineering**, **agentic AI**, 
 - Copy and reuse productivity actions
 - Polished React + Tailwind dashboard
 - Render + Vercel deployment-ready setup
+
+---
+
+## Current Scope
+
+AgentFlow is designed as a polished demo and portfolio project rather than a production SaaS product.
+
+Current tradeoffs:
+
+- Uses **workspace IDs in localStorage** instead of full user authentication
+- Uses **SQLite** for lightweight local persistence
+- Relies on **Groq** as the LLM provider
+- Focuses on **single-workflow orchestration** rather than multi-tenant production scaling
+
+That is intentional: the project is meant to demonstrate practical architecture, product thinking, and implementation quality in a compact repo.
 
 ---
 
@@ -533,6 +556,8 @@ AgentFlow/
 │   ├── main.py
 │   ├── requirements.txt
 │   ├── runtime.txt
+│   ├── tests/
+│   │   └── test_agent_router.py
 │   ├── .env.example
 │   └── README.md
 │
@@ -552,32 +577,18 @@ AgentFlow/
 │   └── README.md
 │
 ├── docs/
-│   ├── architecture.md
-│   ├── api-reference.md
-│   ├── deployment.md
+│   ├── linkedin-post.md
 │   └── screenshots/
-│       ├── dashboard.png
-│       ├── dashboard-overview.png
-│       ├── agent-run.png
-│       ├── agent-run-result.png
-│       ├── trace-timeline.png
-│       ├── history.png
-│       ├── history-search-filter.png
-│       ├── human-review.png
-│       ├── memory.png
-│       ├── memory-management.png
 │       ├── chat-playground.png
-│       └── api-docs.png
-│
-├── .github/
-│   └── workflows/
-│       ├── backend-check.yml
-│       └── frontend-check.yml
+│       ├── dashboard.png
+│       ├── history.png
+│       ├── memory.png
+│       ├── reviews.png
+│       ├── run-agent.png
+│       └── run-agent2.png
 │
 ├── README.md
 ├── .gitignore
-├── LICENSE
-└── CONTRIBUTING.md
 ```
 
 ---
@@ -593,6 +604,25 @@ Make sure you have:
 - npm
 - Git
 - Groq API key
+
+## Verification
+
+Backend smoke tests:
+
+```bash
+cd backend
+python3 -m unittest discover -s tests
+```
+
+Frontend checks:
+
+```bash
+cd frontend
+npm run lint
+npm run build
+```
+
+Note: this frontend uses a Vite version that expects **Node.js 20.19+**.
 
 ---
 

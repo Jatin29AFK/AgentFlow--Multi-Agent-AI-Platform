@@ -1,0 +1,20 @@
+# Python
+backend/venv/
+backend/__pycache__/
+backend/**/*.pyc
+backend/.env
+backend/.pytest_cache/
+backend/agentflow.db
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# Local tooling
+.agents/
+.codex/
+
+# OS
+.DS_Store
+Thumbs.db

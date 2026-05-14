@@ -242,11 +242,12 @@ def submit_human_review(
                 detail="Agent run not found after update."
             )
 
-            if updated_run.get("status") == "COMPLETED":
-                extract_and_save_memories_from_run(
+        if updated_run.get("status") == "COMPLETED":
+            extract_and_save_memories_from_run(
                 run=updated_run,
                 run_id=run_id,
-            )   
+                workspace_id=workspace_id,
+            )
 
         return _build_agent_run_response(updated_run)
 
