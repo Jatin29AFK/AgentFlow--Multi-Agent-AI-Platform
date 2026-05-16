@@ -1,16 +1,23 @@
-# Python
-backend/venv/
-backend/__pycache__/
-backend/**/*.pyc
-backend/.env
-backend/agentflow.db
-backend/.pytest_cache/
+# Environment
+.env
+.env.*
+!.env.example
 
-# Node
-frontend/node_modules/
-frontend/dist/
-frontend/.env
+# Dependencies and builds
+node_modules/
+dist/
+build/
+.vite/
 
-# OS
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS / editors
 .DS_Store
 Thumbs.db
+.idea/
+.vscode/

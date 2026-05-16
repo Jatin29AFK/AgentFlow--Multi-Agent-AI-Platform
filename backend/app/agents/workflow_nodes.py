@@ -2,21 +2,31 @@ import json
 import re
 
 from app.agents.agent_state import AgentState
+from app.core.config import settings
+from app.core.logging import get_logger
 from app.services.llm_service import LLMService
+from app.services.memory_service import build_memory_context
 from app.tools.tool_registry import run_tool
 
-from app.services.memory_service import build_memory_context
 
+logger = get_logger(__name__)
 
 VALID_AGENTS = {"research", "code", "writing", "analysis"}
-VALID_TOOLS = {"calculator", "text_stats", "keyword_extractor", "none"}
+VALID_TOOLS = {
+    "calculator",
+    "text_stats",
+    "keyword_extractor",
+    "wikipedia_search",
+    "arxiv_search",
+    "none",
+}
+
+ARITHMETIC_EXPRESSION_PATTERN = re.compile(
+    r"^\s*[-+()]?\d+(\.\d+)?(\s*[-+*/%]\s*[-+()]?\d+(\.\d+)?)+\s*$"
+)
 
 
 def _safe_score(text: str) -> int:
-    """
-    Extracts first score between 1 and 10 from reviewer response.
-    If no score is found, return 7 as neutral default.
-    """
     matches = re.findall(r"\b(10|[1-9])\b", text)
     if not matches:
         return 7
@@ -26,15 +36,6 @@ def _safe_score(text: str) -> int:
 
 
 def _extract_json(text: str) -> dict:
-    """
-    Extract JSON from LLM output.
-
-    Sometimes LLM may return:
-    Here is the JSON:
-    { ... }
-
-    This function tries to still extract the JSON part safely.
-    """
     try:
         return json.loads(text)
     except json.JSONDecodeError:
@@ -51,33 +52,25 @@ def _extract_json(text: str) -> dict:
 
 
 def _fallback_agent_selection(task: str) -> str:
-    """
-    If Supervisor fails to return valid JSON,
-    this function chooses an agent using simple keyword rules.
-    """
     task_lower = task.lower()
 
     code_keywords = [
         "code", "api", "backend", "frontend", "python", "fastapi",
-        "react", "bug", "error", "function", "class", "database"
+        "react", "bug", "error", "function", "class", "database",
     ]
-
     writing_keywords = [
         "resume", "linkedin", "email", "cover letter", "caption",
-        "message", "rewrite", "portfolio", "description"
+        "message", "rewrite", "portfolio", "description",
     ]
-
     research_keywords = [
         "research", "latest", "study", "paper", "summarize",
-        "explain", "compare", "advantages", "disadvantages"
+        "explain", "compare", "advantages", "disadvantages",
     ]
 
     if any(keyword in task_lower for keyword in code_keywords):
         return "code"
-
     if any(keyword in task_lower for keyword in writing_keywords):
         return "writing"
-
     if any(keyword in task_lower for keyword in research_keywords):
         return "research"
 
@@ -85,10 +78,6 @@ def _fallback_agent_selection(task: str) -> str:
 
 
 def _fallback_tool_selection(task: str) -> str:
-    """
-    If Supervisor fails to choose a valid tool,
-    this function selects tool using simple keyword rules.
-    """
     task_lower = task.lower()
 
     writing_keywords = [
@@ -96,54 +85,69 @@ def _fallback_tool_selection(task: str) -> str:
         "cover letter", "caption", "message", "rewrite", "post",
         "summary", "introduction",
     ]
-
     calculator_keywords = [
         "calculate", "calculation", "compute", "solve", "math",
         "percentage", "percent", "total", "sum", "difference",
         "multiply", "division", "divide",
     ]
-
     text_stats_keywords = [
         "word count", "count words", "characters", "sentence count",
-        "how many words", "text stats"
+        "how many words", "text stats",
     ]
-
     keyword_keywords = [
-        "keywords", "extract keywords", "important terms", "ats keywords"
+        "keywords", "extract keywords", "important terms", "ats keywords",
     ]
-
-    arithmetic_expression_pattern = re.compile(
-        r"^\s*[-+()]?\d+(\.\d+)?(\s*[-+*/%]\s*[-+()]?\d+(\.\d+)?)+\s*$"
-    )
+    wikipedia_keywords = [
+        "wikipedia", "who is", "what is", "history of", "background of",
+    ]
+    arxiv_keywords = [
+        "paper", "research", "study", "arxiv", "academic", "latest model",
+    ]
 
     if any(keyword in task_lower for keyword in writing_keywords):
         return "none"
-
-    if arithmetic_expression_pattern.match(task.strip()):
+    if ARITHMETIC_EXPRESSION_PATTERN.match(task.strip()):
         return "calculator"
-
     if any(keyword in task_lower for keyword in calculator_keywords):
         return "calculator"
-
     if any(keyword in task_lower for keyword in text_stats_keywords):
         return "text_stats"
-
     if any(keyword in task_lower for keyword in keyword_keywords):
         return "keyword_extractor"
+    if any(keyword in task_lower for keyword in arxiv_keywords):
+        return "arxiv_search"
+    if any(keyword in task_lower for keyword in wikipedia_keywords):
+        return "wikipedia_search"
 
     return "none"
 
 
-def memory_retriever_node(state: AgentState) -> AgentState:
-    """
-    Memory Retriever Node:
-    Searches long-term memory before the supervisor starts planning.
+def _is_valid_calculator_input(value: str) -> bool:
+    return bool(ARITHMETIC_EXPRESSION_PATTERN.match((value or "").strip()))
 
-    Why this exists:
-    - The supervisor should know useful past context.
-    - Specialist agents should also use relevant memory.
-    - This makes AgentFlow more personalized and consistent.
-    """
+
+def _log_node(node: str, phase: str, state: AgentState, **extra) -> None:
+    logger.info(
+        f"{node} {phase}.",
+        extra={
+            "node": node,
+            "run_id": state.get("run_id"),
+            "workspace_id": state.get("workspace_id"),
+            "tool_iterations": state.get("tool_iterations", 0),
+            **extra,
+        },
+    )
+
+
+def _tool_history_text(state: AgentState) -> str:
+    history = state.get("tool_history", [])
+    if not history:
+        return "No tools have been executed yet."
+    return "\n".join(f"- {item}" for item in history)
+
+
+def memory_retriever_node(state: AgentState) -> AgentState:
+    _log_node("memory_retriever", "started", state)
     memory_data = build_memory_context(
         state["task"],
         workspace_id=state["workspace_id"],
@@ -151,79 +155,65 @@ def memory_retriever_node(state: AgentState) -> AgentState:
     )
 
     trace = state.get("trace", [])
-
     retrieved_count = len(memory_data["retrieved_memories"])
-
     if retrieved_count == 0:
-        trace.append("Memory Retriever found no relevant long-term memories.")
+        trace.append("Memory Retriever found no relevant semantic memories.")
     else:
         trace.append(
-            f"Memory Retriever found {retrieved_count} relevant long-term memories."
+            f"Memory Retriever found {retrieved_count} relevant semantic memories."
         )
 
-    return {
+    updated_state = {
         **state,
         "retrieved_memories": memory_data["retrieved_memories"],
         "memory_context": memory_data["memory_context"],
         "trace": trace,
     }
+    _log_node("memory_retriever", "completed", updated_state)
+    return updated_state
+
 
 def supervisor_node(state: AgentState) -> AgentState:
-    """
-    Supervisor Agent:
-    - Understands the user task
-    - Selects one specialist agent
-    - Selects one optional tool
-    - Creates execution plan
-    """
-    llm = LLMService()
+    _log_node("supervisor", "started", state)
+    llm = LLMService(role="supervisor")
 
-    system_prompt = """
+    system_prompt = f"""
 You are the Supervisor Agent in AgentFlow.
 
 Your job:
 1. Understand the user's task.
 2. Select exactly one specialist agent.
-3. Decide whether a backend tool is needed.
-4. Create a practical execution plan.
+3. Decide whether another backend tool is needed right now.
+4. Create or refine the execution plan.
 
 Available specialist agents:
-
-1. research
-Use for explanation, comparison, summarization, research-style tasks, concept understanding.
-
-2. code
-Use for coding, debugging, architecture, implementation, API, database, frontend/backend tasks.
-
-3. writing
-Use for resume bullets, emails, LinkedIn posts, captions, documentation, professional writing.
-
-4. analysis
-Use for decision-making, recommendations, trade-off analysis, problem breakdown.
+- research
+- code
+- writing
+- analysis
 
 Available tools:
+- calculator
+- text_stats
+- keyword_extractor
+- wikipedia_search
+- arxiv_search
+- none
 
-1. calculator
-Use only for arithmetic calculation.
-
-2. text_stats
-Use for word count, character count, sentence count, and line count.
-
-3. keyword_extractor
-Use to extract important keywords from text.
-
-4. none
-Use when no tool is needed.
+Tool loop policy:
+- The workflow may call tools multiple times.
+- A maximum of {settings.AGENT_MAX_TOOL_ITERATIONS} tool iterations is allowed.
+- If existing tool results are already enough, return "none".
+- Do not repeat the same tool unless the new input is meaningfully different.
 
 Return ONLY valid JSON in this exact format:
-
-{
+{{
   "selected_agent": "research | code | writing | analysis",
   "route_reason": "short reason why this agent is best",
-  "tool_name": "calculator | text_stats | keyword_extractor | none",
+  "tool_name": "calculator | text_stats | keyword_extractor | wikipedia_search | arxiv_search | none",
   "tool_input": "exact input for the tool, or empty string if no tool is needed",
   "plan": "numbered execution plan"
-}
+}}
 """
 
     user_prompt = f"""
@@ -233,7 +223,13 @@ User task:
 Memory context:
 {state["memory_context"]}
 
-Choose the best specialist agent, decide if a tool is needed, and create the plan.
+Tools already executed:
+{_tool_history_text(state)}
+
+Current tool iterations:
+{state.get("tool_iterations", 0)}
+
+Choose the best specialist agent, decide if another tool is needed, and create the plan.
 Use memory context only if it is relevant.
 """
 
@@ -247,11 +243,25 @@ Use memory context only if it is relevant.
     plan = parsed.get("plan", "").strip()
 
     if selected_agent not in VALID_AGENTS:
-        selected_agent = _fallback_agent_selection(state["task"])
-        route_reason = "Fallback agent routing was used."
+        selected_agent = state.get("selected_agent") or _fallback_agent_selection(state["task"])
+        route_reason = route_reason or "Fallback agent routing was used."
 
     if tool_name not in VALID_TOOLS:
         tool_name = _fallback_tool_selection(state["task"])
+
+    if tool_name == "calculator" and not _is_valid_calculator_input(tool_input):
+        fallback_tool = _fallback_tool_selection(state["task"])
+        tool_name = fallback_tool if fallback_tool != "calculator" else "none"
+        tool_input = state["task"] if tool_name != "none" else ""
+        route_reason = (
+            f"{route_reason} Calculator was skipped because the task is not arithmetic."
+        ).strip()
+
+    if state.get("tool_iterations", 0) >= settings.AGENT_MAX_TOOL_ITERATIONS:
+        tool_name = "none"
+        route_reason = (
+            f"{route_reason} Tool loop stopped after reaching max iterations."
+        ).strip()
 
     if tool_name != "none" and not tool_input:
         tool_input = state["task"]
@@ -259,70 +269,92 @@ Use memory context only if it is relevant.
     if not plan:
         plan = (
             "1. Understand the user task clearly.\n"
-            "2. Use a tool if required.\n"
+            "2. Use tools when needed.\n"
             "3. Produce a structured and useful response.\n"
             "4. Review and refine the final answer."
         )
 
     trace = state.get("trace", [])
     trace.append(
-        f"Supervisor selected '{selected_agent}' agent and '{tool_name}' tool."
+        f"Supervisor selected '{selected_agent}' agent and '{tool_name}' tool on iteration {state.get('tool_iterations', 0)}."
     )
 
-    return {
+    updated_state = {
         **state,
         "selected_agent": selected_agent,
         "route_reason": route_reason,
-        "tool_name": tool_name,
-        "tool_input": tool_input,
+        "tool_name": tool_name if tool_name != "none" or not state.get("tool_used") else state.get("tool_name", "none"),
+        "tool_input": tool_input if tool_name != "none" or not state.get("tool_used") else state.get("tool_input", ""),
         "plan": plan,
+        "should_use_tool": tool_name != "none",
         "trace": trace,
     }
+    _log_node(
+        "supervisor",
+        "completed",
+        updated_state,
+        tool_name=tool_name,
+    )
+    return updated_state
 
 
 def tool_node(state: AgentState) -> AgentState:
-    """
-    Tool Node:
-    Runs selected backend tool before specialist agent.
-    """
+    _log_node("tool_node", "started", state, tool_name=state.get("tool_name"))
     tool_name = state.get("tool_name", "none")
     trace = state.get("trace", [])
+    tool_history = state.get("tool_history", [])
 
     if tool_name == "none":
         trace.append("Tool Node skipped because no tool was needed.")
-        return {
+        updated_state = {
             **state,
             "tool_used": False,
+            "should_use_tool": False,
             "tool_result": "No tool was used for this task.",
+            "trace": trace,
+        }
+        _log_node("tool_node", "completed", updated_state, tool_name="none")
+        return updated_state
+
+    if tool_name == "calculator" and not _is_valid_calculator_input(state.get("tool_input", "")):
+        trace.append("Tool Node skipped calculator because the input was not arithmetic.")
+        return {
+            **state,
+            "tool_name": "none",
+            "tool_input": "",
+            "tool_result": "No tool was used for this task.",
+            "tool_used": False,
+            "should_use_tool": False,
             "trace": trace,
         }
 
     result = run_tool(tool_name, state.get("tool_input", ""))
-
+    tool_history.append(
+        f"{tool_name}('{state.get('tool_input', '')[:120]}') -> {result['result'][:220]}"
+    )
     trace.append(
         f"Tool Node executed '{tool_name}'. Tool used: {result['tool_used']}."
     )
 
-    return {
+    updated_state = {
         **state,
         "tool_used": result["tool_used"],
         "tool_result": result["result"],
+        "should_use_tool": False,
+        "tool_iterations": state.get("tool_iterations", 0) + (1 if result["tool_used"] else 0),
+        "tool_history": tool_history,
         "trace": trace,
     }
+    _log_node(
+        "tool_node",
+        "completed",
+        updated_state,
+        tool_name=tool_name,
+    )
+    return updated_state
 
 
 def _build_specialist_prompt(state: AgentState, specialist_type: str) -> str:
-    """
-    Common prompt builder for all specialist agents.
-
-    This includes:
-    - Original task
-    - Relevant long-term memory
-    - Supervisor plan
-    - Tool result
-
-    Specialist agents can now answer with more context.
-    """
     return f"""
 Original user task:
 {state["task"]}
@@ -333,19 +365,24 @@ Memory context:
 Supervisor plan:
 {state["plan"]}
 
-Tool selected:
+Latest tool selected:
 {state["tool_name"]}
 
-Tool result:
+Latest tool result:
 {state["tool_result"]}
 
+Tool history:
+{_tool_history_text(state)}
+
 Now complete this task as a {specialist_type}-focused agent.
-Use the memory context only if relevant.
-Use the tool result if it is useful.
+Use memory context only if relevant.
+Use tool results when they improve accuracy.
 """
 
+
 def research_agent_node(state: AgentState) -> AgentState:
-    llm = LLMService()
+    _log_node("research_agent", "started", state)
+    llm = LLMService(role="specialist")
 
     system_prompt = """
 You are the Research Agent in AgentFlow.
@@ -355,9 +392,7 @@ Your job:
 2. Compare options when needed.
 3. Summarize information in a structured way.
 4. Keep the answer practical and useful.
-5. Be honest when live web research would be required.
-
-Do not claim live internet access.
+5. Be honest when live research is still needed.
 """
 
     output = llm.generate_response(
@@ -367,16 +402,18 @@ Do not claim live internet access.
 
     trace = state.get("trace", [])
     trace.append("Research Agent completed the task.")
-
-    return {
+    updated_state = {
         **state,
         "execution_result": output,
         "trace": trace,
     }
+    _log_node("research_agent", "completed", updated_state)
+    return updated_state
 
 
 def code_agent_node(state: AgentState) -> AgentState:
-    llm = LLMService()
+    _log_node("code_agent", "started", state)
+    llm = LLMService(role="specialist")
 
     system_prompt = """
 You are the Code Agent in AgentFlow.
@@ -388,8 +425,6 @@ Your job:
 4. Include error handling where useful.
 5. Prefer production-ready structure over toy examples.
 6. Do not invent files that are not needed.
-
-Use simple explanations for beginners.
 """
 
     output = llm.generate_response(
@@ -399,16 +434,18 @@ Use simple explanations for beginners.
 
     trace = state.get("trace", [])
     trace.append("Code Agent completed the task.")
-
-    return {
+    updated_state = {
         **state,
         "execution_result": output,
         "trace": trace,
     }
+    _log_node("code_agent", "completed", updated_state)
+    return updated_state
 
 
 def writing_agent_node(state: AgentState) -> AgentState:
-    llm = LLMService()
+    _log_node("writing_agent", "started", state)
+    llm = LLMService(role="specialist")
 
     system_prompt = """
 You are the Writing Agent in AgentFlow.
@@ -428,16 +465,18 @@ Your job:
 
     trace = state.get("trace", [])
     trace.append("Writing Agent completed the task.")
-
-    return {
+    updated_state = {
         **state,
         "execution_result": output,
         "trace": trace,
     }
+    _log_node("writing_agent", "completed", updated_state)
+    return updated_state
 
 
 def analysis_agent_node(state: AgentState) -> AgentState:
-    llm = LLMService()
+    _log_node("analysis_agent", "started", state)
+    llm = LLMService(role="specialist")
 
     system_prompt = """
 You are the Analysis Agent in AgentFlow.
@@ -457,21 +496,18 @@ Your job:
 
     trace = state.get("trace", [])
     trace.append("Analysis Agent completed the task.")
-
-    return {
+    updated_state = {
         **state,
         "execution_result": output,
         "trace": trace,
     }
+    _log_node("analysis_agent", "completed", updated_state)
+    return updated_state
 
 
 def reviewer_node(state: AgentState) -> AgentState:
-    """
-    Reviewer Agent:
-    Reviews specialist output and assigns a score.
-    This score decides whether human review is needed.
-    """
-    llm = LLMService()
+    _log_node("reviewer", "started", state)
+    llm = LLMService(role="reviewer")
 
     system_prompt = """
 You are the Reviewer Agent in AgentFlow.
@@ -505,14 +541,8 @@ Supervisor route reason:
 Supervisor plan:
 {state["plan"]}
 
-Tool used:
-{state["tool_used"]}
-
-Tool name:
-{state["tool_name"]}
-
-Tool result:
-{state["tool_result"]}
+Tool history:
+{_tool_history_text(state)}
 
 Specialist output:
 {state["execution_result"]}
@@ -526,28 +556,24 @@ Review this output.
     trace = state.get("trace", [])
     trace.append(f"Reviewer Agent reviewed output and assigned score {score}/10.")
 
-    return {
+    updated_state = {
         **state,
         "review": review,
         "score": score,
         "trace": trace,
     }
+    _log_node("reviewer", "completed", updated_state, status=updated_state.get("status"))
+    return updated_state
 
 
 def human_review_node(state: AgentState) -> AgentState:
-    """
-    Human Review Node:
-    This node does not create final answer.
-    It marks the run as needing human review.
-
-    Later, a human can approve, revise, or reject using API.
-    """
+    _log_node("human_review", "started", state)
     trace = state.get("trace", [])
     trace.append(
         "Human Review Node paused the workflow because reviewer score was below threshold."
     )
 
-    return {
+    updated_state = {
         **state,
         "status": "NEEDS_HUMAN_REVIEW",
         "needs_human_review": True,
@@ -557,14 +583,13 @@ def human_review_node(state: AgentState) -> AgentState:
         ),
         "trace": trace,
     }
+    _log_node("human_review", "completed", updated_state, status="NEEDS_HUMAN_REVIEW")
+    return updated_state
 
 
 def finalizer_node(state: AgentState) -> AgentState:
-    """
-    Finalizer Agent:
-    Creates final answer only when review score is good enough.
-    """
-    llm = LLMService()
+    _log_node("finalizer", "started", state)
+    llm = LLMService(role="specialist")
 
     system_prompt = """
 You are the Finalizer Agent in AgentFlow.
@@ -587,11 +612,8 @@ Memory context:
 Selected specialist agent:
 {state["selected_agent"]}
 
-Tool used:
-{state["tool_used"]}
-
-Tool result:
-{state["tool_result"]}
+Tool history:
+{_tool_history_text(state)}
 
 Specialist output:
 {state["execution_result"]}
@@ -610,11 +632,12 @@ Use memory context only if relevant.
 
     trace = state.get("trace", [])
     trace.append("Finalizer Agent produced the final polished answer.")
-
-    return {
+    updated_state = {
         **state,
         "final_answer": final_answer,
         "status": "COMPLETED",
         "needs_human_review": False,
         "trace": trace,
     }
+    _log_node("finalizer", "completed", updated_state, status="COMPLETED")
+    return updated_state

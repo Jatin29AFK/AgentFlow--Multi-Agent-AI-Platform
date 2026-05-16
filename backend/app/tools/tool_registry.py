@@ -1,9 +1,14 @@
 import ast
+import html
 import operator
 import re
+import xml.etree.ElementTree as ET
 from collections import Counter
 from typing import Any, Callable, Dict
 
+import httpx
+
+from app.core.config import settings
 
 # -------------------------------
 # Safe Calculator Tool
@@ -130,6 +135,95 @@ def keyword_extractor_tool(text: str) -> str:
 
 
 # -------------------------------
+# External Research Tools
+# -------------------------------
+
+def wikipedia_search_tool(query: str) -> str:
+    """
+    Searches Wikipedia and returns top titles with summaries.
+    """
+    cleaned = (query or "").strip()
+    if not cleaned:
+        return "Wikipedia search error: no query provided."
+
+    try:
+        response = httpx.get(
+            "https://en.wikipedia.org/w/api.php",
+            params={
+                "action": "query",
+                "list": "search",
+                "srsearch": cleaned,
+                "srlimit": 3,
+                "format": "json",
+            },
+            timeout=settings.HTTP_TIMEOUT_SECONDS,
+        )
+        response.raise_for_status()
+        data = response.json()
+        results = data.get("query", {}).get("search", [])
+
+        if not results:
+            return "Wikipedia search found no results."
+
+        lines = []
+        for index, item in enumerate(results, start=1):
+            title = item.get("title", "Untitled")
+            snippet = re.sub(r"<.*?>", "", item.get("snippet", ""))
+            snippet = html.unescape(snippet).strip()
+            lines.append(f"{index}. {title}: {snippet}")
+
+        return "Wikipedia search results:\n" + "\n".join(lines)
+    except Exception as exc:
+        return f"Wikipedia search error: {exc}"
+
+
+def arxiv_search_tool(query: str) -> str:
+    """
+    Searches arXiv and returns recent paper matches.
+    """
+    cleaned = (query or "").strip()
+    if not cleaned:
+        return "arXiv search error: no query provided."
+
+    try:
+        response = httpx.get(
+            "https://export.arxiv.org/api/query",
+            params={
+                "search_query": f"all:{cleaned}",
+                "start": 0,
+                "max_results": 3,
+                "sortBy": "relevance",
+                "sortOrder": "descending",
+            },
+            timeout=settings.HTTP_TIMEOUT_SECONDS,
+        )
+        response.raise_for_status()
+        root = ET.fromstring(response.text)
+        namespace = {"atom": "http://www.w3.org/2005/Atom"}
+        entries = root.findall("atom:entry", namespace)
+
+        if not entries:
+            return "arXiv search found no results."
+
+        lines = []
+        for index, entry in enumerate(entries, start=1):
+            title = (entry.findtext("atom:title", default="", namespaces=namespace) or "").strip()
+            summary = (
+                entry.findtext("atom:summary", default="", namespaces=namespace) or ""
+            ).strip()
+            published = (
+                entry.findtext("atom:published", default="", namespaces=namespace) or ""
+            ).strip()
+            lines.append(
+                f"{index}. {title} ({published[:10]}): {summary[:240].replace(chr(10), ' ')}"
+            )
+
+        return "arXiv search results:\n" + "\n".join(lines)
+    except Exception as exc:
+        return f"arXiv search error: {exc}"
+
+
+# -------------------------------
 # Registry
 # -------------------------------
 
@@ -137,6 +231,8 @@ TOOLS: Dict[str, Callable[[str], str]] = {
     "calculator": calculator_tool,
     "text_stats": text_stats_tool,
     "keyword_extractor": keyword_extractor_tool,
+    "wikipedia_search": wikipedia_search_tool,
+    "arxiv_search": arxiv_search_tool,
 }
 
 
@@ -145,6 +241,8 @@ def list_tools() -> Dict[str, str]:
         "calculator": "Use for arithmetic calculations.",
         "text_stats": "Use for word count, character count, sentence count, and line count.",
         "keyword_extractor": "Use to extract important keywords from text.",
+        "wikipedia_search": "Use for factual topic lookup from Wikipedia search results.",
+        "arxiv_search": "Use for research-paper discovery from arXiv.",
     }
 
 

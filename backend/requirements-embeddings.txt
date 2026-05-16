@@ -1,0 +1,5 @@
+-r requirements.txt
+
+# Optional: enables true sentence-transformer semantic memory embeddings.
+# The app still runs without this package and falls back to lexical search.
+sentence-transformers

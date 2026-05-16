@@ -1,3 +1,6 @@
+import uuid
+from typing import AsyncIterator
+
 from langgraph.graph import END, START, StateGraph
 
 from app.agents.agent_state import AgentState
@@ -17,32 +20,29 @@ from app.core.config import settings
 
 
 def route_to_specialist(state: AgentState) -> str:
-    """
-    Chooses which specialist agent node should run.
-    This depends on supervisor_node output.
-    """
     selected_agent = state.get("selected_agent", "analysis").lower()
 
     if selected_agent == "research":
         return "research"
-
     if selected_agent == "code":
         return "code"
-
     if selected_agent == "writing":
         return "writing"
-
     return "analysis"
 
 
-def route_after_review(state: AgentState) -> str:
-    """
-    Decides whether to finalize automatically or wait for human review.
+def route_after_supervisor(state: AgentState) -> str:
+    if (
+        state.get("should_use_tool", False)
+        and state.get("tool_name", "none").lower() != "none"
+        and state.get("tool_iterations", 0) < settings.AGENT_MAX_TOOL_ITERATIONS
+    ):
+        return "tool"
 
-    Logic:
-    - If reviewer score is below threshold, go to human_review_node.
-    - Otherwise, go to finalizer_node.
-    """
+    return route_to_specialist(state)
+
+
+def route_after_review(state: AgentState) -> str:
     score = int(state.get("score", 0))
     threshold = settings.HUMAN_REVIEW_SCORE_THRESHOLD
 
@@ -70,18 +70,20 @@ def build_agent_graph():
 
     graph_builder.add_edge(START, "memory_retriever")
     graph_builder.add_edge("memory_retriever", "supervisor")
-    graph_builder.add_edge("supervisor", "tool_node")
 
     graph_builder.add_conditional_edges(
-        "tool_node",
-        route_to_specialist,
+        "supervisor",
+        route_after_supervisor,
         {
+            "tool": "tool_node",
             "research": "research_agent",
             "code": "code_agent",
             "writing": "writing_agent",
             "analysis": "analysis_agent",
         },
     )
+
+    graph_builder.add_edge("tool_node", "supervisor")
 
     graph_builder.add_edge("research_agent", "reviewer")
     graph_builder.add_edge("code_agent", "reviewer")
@@ -106,36 +108,65 @@ def build_agent_graph():
 agent_graph = build_agent_graph()
 
 
-def run_agent_workflow(task: str, workspace_id: str) -> AgentState:
-    initial_state: AgentState = {
+def build_initial_state(task: str, workspace_id: str, run_id: str | None = None) -> AgentState:
+    return {
+        "run_id": run_id or str(uuid.uuid4()),
         "task": task,
         "workspace_id": workspace_id,
-
         "retrieved_memories": [],
         "memory_context": "No memory retrieved yet.",
-
         "selected_agent": "",
         "route_reason": "",
         "plan": "",
-
         "tool_name": "none",
         "tool_input": "",
         "tool_result": "",
         "tool_used": False,
-
+        "should_use_tool": False,
+        "tool_iterations": 0,
+        "tool_history": [],
         "execution_result": "",
         "review": "",
         "score": 0,
         "final_answer": "",
-
         "status": "RUNNING",
         "needs_human_review": False,
         "human_decision": None,
         "human_feedback": None,
         "reviewed_at": None,
-
         "trace": [],
     }
 
-    result = agent_graph.invoke(initial_state)
-    return result
+
+def run_agent_workflow(task: str, workspace_id: str, run_id: str | None = None) -> AgentState:
+    initial_state = build_initial_state(task, workspace_id, run_id=run_id)
+    return agent_graph.invoke(initial_state)
+
+
+async def stream_agent_workflow(
+    task: str,
+    workspace_id: str,
+    run_id: str | None = None,
+) -> AsyncIterator[dict]:
+    initial_state = build_initial_state(task, workspace_id, run_id=run_id)
+
+    async for chunk in agent_graph.astream(
+        initial_state,
+        stream_mode=["updates", "values"],
+        version="v2",
+    ):
+        yield chunk
+
+
+async def stream_agent_workflow_events(
+    task: str,
+    workspace_id: str,
+    run_id: str | None = None,
+) -> AsyncIterator[dict]:
+    initial_state = build_initial_state(task, workspace_id, run_id=run_id)
+
+    async for event in agent_graph.astream_events(
+        initial_state,
+        version="v2",
+    ):
+        yield event

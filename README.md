@@ -1,96 +1,37 @@
-# AgentFlow — Multi-Agent AI Orchestration Platform
+# AgentFlow
 
 ![Python](https://img.shields.io/badge/Python-3.11-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-Backend-green)
 ![React](https://img.shields.io/badge/React-Frontend-blue)
 ![LangGraph](https://img.shields.io/badge/LangGraph-Agentic_AI-purple)
-![Groq](https://img.shields.io/badge/Groq-LLM_API-orange)
 ![SQLite](https://img.shields.io/badge/SQLite-Local_DB-lightgrey)
-![Vite](https://img.shields.io/badge/Vite-Frontend_Build-purple)
-![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-UI_Styling-38B2AC)
-![Status](https://img.shields.io/badge/Status-Portfolio_Project-gold)
+![Vercel](https://img.shields.io/badge/Vercel-Frontend-black)
+![Render](https://img.shields.io/badge/Render-Backend-46E3B7)
 
-AgentFlow is a full-stack **multi-agent AI orchestration platform** built with **FastAPI, LangGraph, Groq, React, SQLite, Vite, and Tailwind CSS**.
+AgentFlow is a full-stack multi-agent AI orchestration platform built with FastAPI, LangGraph, React, Vite, Tailwind CSS, SQLite, and pluggable LLM providers. It is designed as a portfolio-ready AI engineering project that demonstrates agent routing, tool use, semantic memory, streaming workflow updates, human review, run history, and production-minded deployment hygiene.
 
-It provides a polished AI workflow dashboard where users can run supervisor-led agent tasks, use a direct **Chat Playground**, manage long-term memory, review low-confidence outputs, inspect execution traces, search/filter workflow history, and work inside browser-specific isolated workspaces for safer public deployment.
+The app has two intentionally separate AI experiences:
 
-This project is built to showcase practical **AI engineering**, **agentic AI**, **human-in-the-loop AI**, and **full-stack GenAI system design** skills beyond a basic chatbot.
+- **Run Agent:** a structured LangGraph workflow with memory retrieval, supervisor routing, tool execution, specialist generation, reviewer scoring, and optional human review.
+- **Chat Playground:** a direct conversation interface for lightweight model interaction with session history.
 
-## Why It Is Worth Exploring
+## Highlights
 
-- It demonstrates a real **stateful agent workflow**, not just prompt-in and text-out chat.
-- The backend includes **routing, tools, memory, scoring, and human review** in one flow.
-- The frontend turns those internals into a product-style dashboard with **history, traceability, and review operations**.
-- It is intentionally scoped as a **portfolio-quality engineering project** that shows how agent systems can be structured end to end.
+- LangGraph workflow with conditional routing and a guarded multi-tool loop.
+- Server-Sent Events streaming for node-by-node workflow progress.
+- Long-term memory with optional sentence-transformer embeddings and lexical fallback.
+- Semantic memory deduplication when embeddings are available.
+- Provider abstraction for Groq, OpenAI, and Ollama.
+- Per-role model and temperature configuration for chat, supervisor, specialist, reviewer, and memory tasks.
+- External research tools through Wikipedia and arXiv, plus safe local utilities.
+- Human-in-the-loop review with approve, revise, and reject actions.
+- Optional webhook notification when a run enters pending review.
+- Workspace-scoped runs and memories using `X-Workspace-Id`.
+- Searchable, filterable, paginated run history with JSON export.
+- Structured JSON logging, request IDs, retry handling, rate limiting, and SQLite WAL mode.
+- React dashboard split into focused tabs and hooks instead of one monolithic app file.
 
----
-
-## Live Demo
-
-- **Frontend App:** https://agent-flow-five-phi.vercel.app
-- **Backend API:** https://agentflow-mlmp.onrender.com
-- **LinkedIn Post Draft:** [docs/linkedin-post.md](docs/linkedin-post.md)
-
----
-
-## Features at a Glance
-
-- LangGraph-based multi-agent workflow
-- Supervisor-led specialist agent routing
-- Research, Code, Writing, and Analysis agents
-- Backend tool registry
-- Long-term memory management
-- Browser-specific workspace isolation
-- Workspace-scoped run history and memory
-- Reviewer scoring and quality checks
-- Human-in-the-loop approve/revise/reject workflow
-- Trace timeline for workflow observability
-- Chat Playground for direct LLM interaction
-- Searchable and filterable run history
-- Overview dashboard stats
-- Copy and reuse productivity actions
-- Polished React + Tailwind dashboard
-- Render + Vercel deployment-ready setup
-
----
-
-## Current Scope
-
-AgentFlow is designed as a polished demo and portfolio project rather than a production SaaS product.
-
-Current tradeoffs:
-
-- Uses **workspace IDs in localStorage** instead of full user authentication
-- Uses **SQLite** for lightweight local persistence
-- Relies on **Groq** as the LLM provider
-- Focuses on **single-workflow orchestration** rather than multi-tenant production scaling
-
-That is intentional: the project is meant to demonstrate practical architecture, product thinking, and implementation quality in a compact repo.
-
----
-
-## Why I Built This
-
-Most AI applications stop at a single LLM call:
-
-```txt
-User → LLM → Response
-```
-
-But real AI systems need more than that. Production-level AI applications often require:
-
-- Task planning
-- Agent routing
-- Tool execution
-- Memory retrieval
-- Output review
-- Human approval
-- Workspace-level data isolation
-- Run history
-- Traceability
-- Observability
-
-AgentFlow was built to simulate a realistic AI agent platform where every task goes through a controlled workflow.
+## Workflow
 
 ```txt
 User Task
@@ -99,915 +40,201 @@ Memory Retriever
    ↓
 Supervisor Agent
    ↓
-Tool Node
+Tool Loop (0..N, max guarded)
    ↓
 Specialist Agent
    ↓
 Reviewer Agent
    ↓
 Score Check
-   ├── High Score → Finalizer Agent → Completed
+   ├── High Score → Finalizer → Completed
    └── Low Score  → Human Review → Approve / Revise / Reject
    ↓
-Save Workspace-Scoped Run History
+Persist Run History
    ↓
 Extract Useful Memory
 ```
 
----
-
-## What Makes This Different From a Basic Chatbot
-
-Most chatbot projects follow this pattern:
-
-```txt
-User Prompt → LLM → Response
-```
-
-AgentFlow follows a more production-style workflow:
-
-```txt
-User Task
-→ Workspace Identification
-→ Memory Retrieval
-→ Supervisor Routing
-→ Tool Execution
-→ Specialist Agent Execution
-→ Reviewer Scoring
-→ Human Review or Finalizer
-→ Trace Storage
-→ Workspace-Scoped History and Memory
-```
-
-This demonstrates:
-
-- Agent orchestration
-- State-based workflow design
-- Quality control
-- Human approval
-- Memory-aware generation
-- Workspace data isolation
-- Full-stack AI product thinking
-- Practical AI engineering beyond simple LLM wrappers
-
----
-
-## Key Features
-
-### Multi-Agent Workflow
-
-AgentFlow uses a supervisor-led multi-agent workflow where every task is routed to the most suitable specialist agent.
-
-Specialist agents include:
-
-- **Research Agent** — explains, compares, summarizes, and provides concept-level answers
-- **Code Agent** — handles coding, debugging, backend/frontend architecture, and implementation tasks
-- **Writing Agent** — creates resume bullets, LinkedIn posts, emails, captions, and documentation
-- **Analysis Agent** — handles decision-making, trade-offs, recommendations, and problem breakdowns
-
----
-
-### Supervisor Agent Routing
-
-The Supervisor Agent analyzes the user task and decides:
-
-- Which specialist agent should handle the task
-- Whether a backend tool is required
-- What execution plan should be followed
-
-Example:
-
-```txt
-Task: Create resume bullets for my AI project
-Selected Agent: Writing Agent
-
-Task: Write a FastAPI endpoint
-Selected Agent: Code Agent
-
-Task: Compare RAG and fine-tuning
-Selected Agent: Research Agent
-```
-
----
-
-### Tool Registry
-
-AgentFlow includes a backend tool registry that allows the workflow to use deterministic tools instead of relying only on LLM text generation.
-
-Current tools:
-
-| Tool | Purpose |
-|---|---|
-| Calculator Tool | Performs safe arithmetic calculations |
-| Text Statistics Tool | Counts words, characters, sentences, and lines |
-| Keyword Extractor Tool | Extracts important terms and ATS-style keywords |
-
-This makes the project closer to a real agentic system because the LLM can decide when to use external tools, while the backend executes those tools safely and deterministically.
-
----
-
-### Long-Term Memory
-
-AgentFlow stores useful memories in SQLite and retrieves relevant context before every workflow run.
-
-Memory can store:
-
-- User preferences
-- Project details
-- Tech stack information
-- Writing style preferences
-- Resume preferences
-- Long-term reusable context
-
-Example memory:
-
-```txt
-User prefers simple, professional, human-sounding resume bullets with measurable impact.
-```
-
-When the user later asks for resume bullets, AgentFlow retrieves this memory and uses it during planning and generation.
-
----
-
-### Reviewer Agent
-
-After a specialist agent completes the task, a Reviewer Agent evaluates the output.
-
-It checks:
-
-- Clarity
-- Completeness
-- Correctness
-- Usefulness
-- Alignment with the original task
-
-The reviewer assigns a score from `1` to `10`.
-
-Example:
-
-```txt
-Score: 8/10
-
-The answer is clear and useful, but it can be improved by adding stronger technical keywords and measurable impact.
-```
-
----
-
-### Human-in-the-Loop Review
-
-If the reviewer score is below the configured threshold, AgentFlow pauses the workflow and marks it for human review.
-
-A human reviewer can:
-
-- **Approve** the output
-- **Revise** the output with feedback
-- **Reject** the output
-
-This adds a production-style safety and quality-control layer.
-
-Example human review request:
-
-```json
-{
-  "action": "revise",
-  "feedback": "Make the answer shorter, more professional, and more resume-friendly."
-}
-```
-
----
-
-### Chat Playground
-
-AgentFlow includes a separate **Chat Playground** connected to the `/chat` backend endpoint.
-
-Users can:
-
-- Send general chat prompts
-- Use prompt suggestions and demo examples
-- View session-style chat history
-- See the active model badge
-- Copy individual chat messages
-- Reuse user chat messages as agent tasks
-- Clear the chat session
-- Use `Ctrl/Cmd + Enter` to send messages
-
-This provides a lightweight direct LLM interaction layer alongside the structured multi-agent workflow.
-
-The Chat Playground is intentionally separate from `/agent/run`:
-
-```txt
-/chat      → Direct LLM interaction
-/agent/run → Full structured multi-agent workflow
-```
-
----
-
-### Workspace Isolation
-
-AgentFlow supports browser-specific workspaces using a workspace ID stored in `localStorage`.
-
-When a user opens the app, the frontend creates or loads a workspace ID and sends it with scoped API requests:
-
-```txt
-X-Workspace-Id: workspace_xxxxx
-```
-
-The backend uses this workspace ID to isolate:
-
-- Agent runs
-- Run history
-- Pending reviews
-- Memory list
-- Memory search
-- Memory deletion
-- Memory extraction from completed runs
-
-This prevents different deployed users from seeing each other’s data in the public demo.
-
-> This is not full authentication. It is a practical workspace isolation layer for public portfolio deployment. For production SaaS usage, it should be replaced with authenticated user accounts and role-based access control.
-
----
-
-### Trace History and Observability
-
-Every workflow run is saved with detailed trace information.
-
-Each run stores:
-
-- Original task
-- Retrieved memory
-- Selected agent
-- Tool used
-- Tool result
-- Reviewer score
-- Final status
-- Human review decision
-- Final answer
-- Trace timeline
-
-Example trace:
-
-```txt
-1. Memory Retriever found 2 relevant long-term memories.
-2. Supervisor selected 'writing' agent and 'none' tool.
-3. Tool Node skipped because no tool was needed.
-4. Writing Agent completed the task.
-5. Reviewer Agent reviewed output and assigned score 8/10.
-6. Finalizer Agent produced the final polished answer.
-```
-
-This helps debug agent decisions and makes the system observable.
-
----
+![AgentFlow LangGraph workflow](docs/agentflow-graph.png)
 
 ## Screenshots
 
 ### Dashboard
+
 ![AgentFlow Dashboard](docs/screenshots/dashboard.png)
 
 ### Run Agent
+
 ![Run Agent](docs/screenshots/run-agent.png)
 
-![Run Agent](docs/screenshots/run-agent2.png)
+![Run Agent Result](docs/screenshots/run-agent2.png)
 
-### Run History
+### History, Reviews, Memory, and Chat
+
 ![Run History](docs/screenshots/history.png)
 
-### Human Reviews
 ![Human Reviews](docs/screenshots/reviews.png)
 
-### Memory
 ![Memory](docs/screenshots/memory.png)
 
-### Chat Playground
 ![Chat Playground](docs/screenshots/chat-playground.png)
-
 
 ## Tech Stack
 
-### Backend
-
-| Technology | Purpose |
-|---|---|
-| Python | Backend programming language |
-| FastAPI | API development |
-| LangGraph | Multi-agent workflow orchestration |
-| LangChain | LLM integration layer |
-| Groq | LLM inference provider |
-| SQLite | Local database for runs and memory |
-| Pydantic | Request and response validation |
-| Uvicorn | ASGI server |
-
-### Frontend
-
-| Technology | Purpose |
-|---|---|
-| React | Frontend UI |
-| Vite | Frontend build tool |
-| Tailwind CSS | Styling |
-| JavaScript | UI logic |
-| localStorage | Browser workspace ID storage |
-
-### Deployment
-
-| Platform | Purpose |
-|---|---|
-| Render | Backend deployment |
-| Vercel | Frontend deployment |
-| GitHub Actions | Optional CI checks |
-
----
-
-## System Architecture
-
-```txt
-Frontend Dashboard
-├── Workspace ID Manager
-│   └── Stores browser-specific workspace_id in localStorage
-│
-├── Run Agent Tab
-│   ├── Submit task
-│   ├── Demo workflow examples
-│   ├── View final answer
-│   ├── View execution plan
-│   ├── View tool activity
-│   ├── View memory used
-│   ├── View reviewer feedback
-│   └── View trace timeline
-│
-├── Chat Playground Tab
-│   ├── Direct chat with /chat endpoint
-│   ├── Session-style chat history
-│   ├── Prompt suggestions
-│   ├── Model badge display
-│   └── Reuse chat prompts as agent tasks
-│
-├── Run History Tab
-│   ├── Search runs
-│   ├── Filter by status
-│   ├── View selected run detail
-│   └── Reuse previous tasks
-│
-├── Human Reviews Tab
-│   ├── View pending reviews
-│   ├── Approve output
-│   ├── Revise output
-│   ├── Reject output
-│   └── Copy/reuse review content
-│
-└── Memory Tab
-    ├── Add memory
-    ├── Search memory
-    ├── Delete memory with confirmation
-    └── View workspace-specific memories
-```
-
-```txt
-Backend API
-├── FastAPI Routers
-├── CORS Middleware
-├── Workspace Header Handling
-├── LangGraph Agent Workflow
-├── LLM Service
-├── Tool Registry
-├── Memory Service
-├── Human Review Service
-├── SQLite Repository Layer
-└── Database Initialization
-```
-
----
-
-## Agent Workflow Architecture
-
-```txt
-User opens app
-   ↓
-Frontend creates or loads workspace_id from localStorage
-   ↓
-User submits task
-   ↓
-Frontend sends POST /agent/run with X-Workspace-Id
-   ↓
-Backend receives task + workspace_id
-   ↓
-Memory Retriever searches workspace-specific memory
-   ↓
-Supervisor Agent selects specialist agent and tool
-   ↓
-Tool Node executes backend tool if needed
-   ↓
-Specialist Agent generates output
-   ↓
-Reviewer Agent scores output
-   ↓
-Score Check
-   ├── score >= threshold → Finalizer Agent
-   └── score < threshold  → Human Review Node
-   ↓
-Run saved with workspace_id
-   ↓
-Useful memory extracted and saved with workspace_id
-   ↓
-Frontend displays structured result
-```
-
----
+| Area | Tools |
+| --- | --- |
+| Backend | Python, FastAPI, LangGraph, LangChain, Pydantic, SQLite |
+| LLM Providers | Groq, OpenAI, Ollama |
+| Frontend | React, Vite, Tailwind CSS |
+| Deployment | Render backend, Vercel frontend |
+| Quality | Python unittest, Node test runner, ESLint |
 
 ## Project Structure
 
 ```txt
 AgentFlow/
+├── render.yaml
 ├── backend/
 │   ├── app/
-│   │   ├── agents/
-│   │   │   ├── agent_graph.py
-│   │   │   ├── agent_state.py
-│   │   │   └── workflow_nodes.py
-│   │   │
-│   │   ├── core/
-│   │   │   └── config.py
-│   │   │
-│   │   ├── db/
-│   │   │   └── database.py
-│   │   │
-│   │   ├── repositories/
-│   │   │   ├── agent_run_repository.py
-│   │   │   └── memory_repository.py
-│   │   │
-│   │   ├── routers/
-│   │   │   ├── agent_router.py
-│   │   │   ├── chat_router.py
-│   │   │   └── memory_router.py
-│   │   │
-│   │   ├── schemas/
-│   │   │   ├── agent_schema.py
-│   │   │   ├── chat_schema.py
-│   │   │   └── memory_schema.py
-│   │   │
-│   │   ├── services/
-│   │   │   ├── human_review_service.py
-│   │   │   ├── llm_service.py
-│   │   │   └── memory_service.py
-│   │   │
-│   │   └── tools/
-│   │       └── tool_registry.py
-│   │
-│   ├── main.py
-│   ├── requirements.txt
-│   ├── runtime.txt
+│   │   ├── agents/          # LangGraph state, graph, workflow nodes
+│   │   ├── core/            # Config, logging, rate limiting
+│   │   ├── db/              # SQLite connection and schema setup
+│   │   ├── repositories/    # Persistence layer
+│   │   ├── routers/         # FastAPI routes
+│   │   ├── schemas/         # Pydantic request/response models
+│   │   ├── services/        # LLM, memory, embeddings, notifications
+│   │   └── tools/           # Calculator, text, Wikipedia, arXiv tools
 │   ├── tests/
-│   │   └── test_agent_router.py
-│   ├── .env.example
-│   └── README.md
-│
+│   ├── requirements.txt
+│   ├── requirements-embeddings.txt
+│   └── runtime.txt
 ├── frontend/
-│   ├── public/
-│   │   └── favicon / logo assets
-│   │
 │   ├── src/
-│   │   ├── assets/
-│   │   ├── App.jsx
-│   │   ├── index.css
-│   │   └── main.jsx
-│   │
-│   ├── package.json
-│   ├── vite.config.js
-│   ├── .env.example
-│   └── README.md
-│
+│   │   ├── components/      # Dashboard tabs and shared UI
+│   │   ├── hooks/           # API, chat, history, memory, workflow hooks
+│   │   └── lib/             # Constants, formatting, SSE helpers
+│   └── package.json
 ├── docs/
-│   ├── linkedin-post.md
+│   ├── agentflow-graph.png
 │   └── screenshots/
-│       ├── chat-playground.png
-│       ├── dashboard.png
-│       ├── history.png
-│       ├── memory.png
-│       ├── reviews.png
-│       ├── run-agent.png
-│       └── run-agent2.png
-│
-├── README.md
-├── .gitignore
+└── README.md
 ```
-
----
 
 ## Local Setup
 
-### Prerequisites
-
-Make sure you have:
-
-- Python 3.11+
-- Node.js 20+
-- npm
-- Git
-- Groq API key
-
-## Verification
-
-Backend smoke tests:
+### Backend
 
 ```bash
 cd backend
-python3 -m unittest discover -s tests
-```
-
-Frontend checks:
-
-```bash
-cd frontend
-npm run lint
-npm run build
-```
-
-Note: this frontend uses a Vite version that expects **Node.js 20.19+**.
-
----
-
-## Backend Setup
-
-Go to backend folder:
-
-```bash
-cd backend
-```
-
-Create virtual environment:
-
-```bash
 python3 -m venv venv
 source venv/bin/activate
-```
-
-Install dependencies:
-
-```bash
 pip install -r requirements.txt
-```
-
-Create `.env` file:
-
-```bash
 cp .env.example .env
 ```
 
-Update `.env`:
+Set at least one provider key in `backend/.env`:
 
 ```env
-APP_NAME=AgentFlow
-APP_VERSION=0.1.0
-ENVIRONMENT=development
-
+LLM_PROVIDER=groq
 GROQ_API_KEY=your_groq_api_key_here
-GROQ_MODEL=llama-3.1-8b-instant
-
-SQLITE_DB_PATH=agentflow.db
-HUMAN_REVIEW_SCORE_THRESHOLD=7
-
-ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174
 ```
 
-Run backend:
+Run the API:
 
 ```bash
 uvicorn main:app --reload
 ```
 
-Backend will run at:
+Backend URLs:
 
-```txt
-http://127.0.0.1:8000
+- API: `http://127.0.0.1:8000`
+- Swagger docs: `http://127.0.0.1:8000/docs`
+- Health check: `http://127.0.0.1:8000/health`
+
+Optional semantic embeddings:
+
+```bash
+pip install -r requirements-embeddings.txt
 ```
 
-Swagger API docs:
+Without the optional embedding package, AgentFlow still runs and falls back to lexical memory search.
 
-```txt
-http://127.0.0.1:8000/docs
-```
-
-Health check:
-
-```txt
-http://127.0.0.1:8000/health
-```
-
----
-
-## Frontend Setup
-
-Go to frontend folder:
+### Frontend
 
 ```bash
 cd frontend
-```
-
-Install dependencies:
-
-```bash
 npm install
-```
-
-Create `.env` file:
-
-```bash
 cp .env.example .env
-```
-
-Update `.env`:
-
-```env
-VITE_API_BASE_URL=http://127.0.0.1:8000
-```
-
-Run frontend:
-
-```bash
 npm run dev
 ```
 
-Frontend will run at:
-
-```txt
-http://localhost:5173
-```
-
-If port `5173` is already in use, Vite may run on `5174`. That is okay. Just make sure backend CORS allows that port.
-
----
-
-## Environment Variables
-
-### Backend `.env.example`
-
-```env
-APP_NAME=AgentFlow
-APP_VERSION=0.1.0
-ENVIRONMENT=development
-
-GROQ_API_KEY=your_groq_api_key_here
-GROQ_MODEL=llama-3.1-8b-instant
-
-SQLITE_DB_PATH=agentflow.db
-HUMAN_REVIEW_SCORE_THRESHOLD=7
-
-ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174
-```
-
-### Frontend `.env.example`
+Set the frontend API URL:
 
 ```env
 VITE_API_BASE_URL=http://127.0.0.1:8000
 ```
 
----
+Frontend URL:
 
-## API Endpoints
+- `http://localhost:5173`
 
-### Health
+## Environment Variables
 
-| Method | Endpoint | Workspace Scoped | Description |
-|---|---|---|---|
-| GET | `/health` | No | Check backend health |
-| GET | `/` | No | Root API information |
+Backend:
 
----
+| Variable | Purpose |
+| --- | --- |
+| `LLM_PROVIDER` | `groq`, `openai`, or `ollama` |
+| `GROQ_API_KEY` | Groq API key when using Groq |
+| `OPENAI_API_KEY` | OpenAI API key when using OpenAI |
+| `OLLAMA_BASE_URL` | Local Ollama server URL |
+| `GROQ_MODEL` / `DEFAULT_LLM_MODEL` | Default model selection |
+| `CHAT_MODEL`, `SUPERVISOR_MODEL`, `SPECIALIST_MODEL`, `REVIEWER_MODEL`, `MEMORY_MODEL` | Optional per-role model overrides |
+| `*_TEMPERATURE` | Optional per-role temperature overrides |
+| `SQLITE_DB_PATH` | SQLite database file path |
+| `HUMAN_REVIEW_SCORE_THRESHOLD` | Score below which human review is required |
+| `AGENT_MAX_TOOL_ITERATIONS` | Maximum tool-loop passes |
+| `REVIEW_WEBHOOK_URL` | Optional webhook for pending review notifications |
+| `ALLOWED_ORIGINS` | Comma-separated frontend origins allowed by CORS |
+| `ALLOWED_ORIGIN_REGEX` | Optional CORS regex for preview URLs |
 
-### Chat
+Frontend:
 
-| Method | Endpoint | Workspace Scoped | Description |
-|---|---|---|---|
-| POST | `/chat` | No | Direct LLM chat endpoint used by Chat Playground |
+| Variable | Purpose |
+| --- | --- |
+| `VITE_API_BASE_URL` | Public backend URL used by the React app |
 
-Example request:
+Do not commit real `.env` files. This repo intentionally tracks only `.env.example` templates.
 
-```json
-{
-  "message": "Explain AI agents in simple words."
-}
-```
+## API Overview
 
-Example response:
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `GET` | `/health` | Backend health check |
+| `POST` | `/chat` | Direct chat endpoint with conversation history |
+| `POST` | `/agent/run` | Blocking workflow run |
+| `POST` | `/agent/run/stream` | Streaming workflow run through SSE |
+| `GET` | `/agent/runs` | Paginated, searchable run history |
+| `GET` | `/agent/runs/{run_id}` | Run detail |
+| `GET` | `/agent/runs/{run_id}/export` | JSON export for a run |
+| `GET` | `/agent/reviews/pending` | Pending human reviews |
+| `POST` | `/agent/runs/{run_id}/human-review` | Approve, revise, or reject a run |
+| `GET` | `/memory` | List workspace memories |
+| `POST` | `/memory` | Add memory |
+| `GET` | `/memory/search` | Search memory |
+| `DELETE` | `/memory/{memory_id}` | Delete memory |
 
-```json
-{
-  "response": "AI agents are...",
-  "model": "llama-3.1-8b-instant"
-}
-```
-
----
-
-### Agent Workflow
-
-| Method | Endpoint | Workspace Scoped | Description |
-|---|---|---|---|
-| POST | `/agent/run` | Yes | Run full AgentFlow workflow |
-| GET | `/agent/runs` | Yes | Get recent workflow runs for the workspace |
-| GET | `/agent/runs/{run_id}` | Yes | Get one workflow run detail from the workspace |
-| GET | `/agent/reviews/pending` | Yes | Get runs waiting for human review |
-| POST | `/agent/runs/{run_id}/human-review` | Yes | Submit human review action |
-
-Example request:
-
-```json
-{
-  "task": "Create 3 resume bullets for AgentFlow project."
-}
-```
-
-Example response fields:
-
-```json
-{
-  "run_id": "uuid",
-  "task": "Create 3 resume bullets for AgentFlow project.",
-  "retrieved_memories": [],
-  "memory_context": "No relevant long-term memory found for this task.",
-  "selected_agent": "writing",
-  "route_reason": "The task requires professional resume writing.",
-  "tool_name": "none",
-  "tool_used": false,
-  "score": 8,
-  "status": "COMPLETED",
-  "needs_human_review": false,
-  "final_answer": "...",
-  "trace": []
-}
-```
-
----
-
-### Human Review
-
-Example request:
-
-```json
-{
-  "action": "revise",
-  "feedback": "Make the answer shorter, more professional, and more resume-friendly."
-}
-```
-
-Allowed actions:
+Workspace-scoped endpoints use:
 
 ```txt
-approve
-revise
-reject
+X-Workspace-Id: workspace_xxxxx
 ```
-
----
-
-### Memory
-
-| Method | Endpoint | Workspace Scoped | Description |
-|---|---|---|---|
-| POST | `/memory` | Yes | Add memory manually |
-| GET | `/memory` | Yes | List saved memories for the workspace |
-| GET | `/memory/search?query=...` | Yes | Search workspace memories |
-| DELETE | `/memory/{memory_id}` | Yes | Delete a workspace memory |
-
-Example memory request:
-
-```json
-{
-  "content": "User prefers simple resume bullets with measurable impact.",
-  "tags": ["resume", "preference"],
-  "importance": 5
-}
-```
-
----
-
-## Example Usage
-
-### Add Memory
-
-```json
-{
-  "content": "AgentFlow is a multi-agent AI orchestration project built using FastAPI, LangGraph, Groq, SQLite, tools, memory, human review, and React.",
-  "tags": ["agentflow", "project", "tech-stack"],
-  "importance": 5
-}
-```
-
-### Run Agent Workflow
-
-```json
-{
-  "task": "Create 3 strong resume bullets for AgentFlow project."
-}
-```
-
-### Submit Human Review
-
-```json
-{
-  "action": "revise",
-  "feedback": "Make it more concise and add stronger AI engineering keywords."
-}
-```
-
-### Use Chat Playground
-
-```json
-{
-  "message": "Explain the AgentFlow architecture in simple words."
-}
-```
-
----
-
-## Frontend Dashboard
-
-The React dashboard provides a complete interface for interacting with AgentFlow.
-
-### Dashboard Overview
-
-Shows:
-
-- Recent run count
-- Completed run count
-- Pending review count
-- Average reviewer score
-- Last updated time
-- API URL copy action
-
-### Run Agent
-
-Used to:
-
-- Submit agent tasks
-- Use demo workflow examples
-- Clear and copy tasks
-- Run with `Ctrl/Cmd + Enter`
-- View structured results
-- View final answer
-- View execution plan
-- View tool activity
-- View memory used
-- View trace timeline
-- View reviewer feedback
-- Copy final answer
-- Copy trace timeline
-- Reuse tasks from previous results
-
-### Chat Playground
-
-Used to:
-
-- Send direct chat messages to the `/chat` endpoint
-- Use prompt suggestions
-- View session-style chat history
-- See model badge display
-- Copy individual messages
-- Reuse chat prompts as agent tasks
-- Clear chat session
-- Send using `Ctrl/Cmd + Enter`
-
-### Run History
-
-Used to:
-
-- View previous workflow runs saved in SQLite
-- Search run history
-- Filter history by status
-- Highlight selected run
-- View detailed run data
-- Reuse previous tasks
-
-### Human Reviews
-
-Used to:
-
-- View pending low-confidence outputs
-- Approve output
-- Revise output with feedback
-- Reject output
-- Copy final answer
-- Reuse task
-
-### Memory
-
-Used to:
-
-- Add memory manually
-- Search memory
-- View saved memory
-- Delete memory with confirmation
-- See improved empty states for no memories or no search results
-
----
 
 ## Deployment
 
-### Backend Deployment on Render
+### Render Backend
 
-Create a new Render Web Service.
-
-Use these settings:
+Create a Render Web Service with:
 
 ```txt
 Root Directory: backend
@@ -1015,41 +242,29 @@ Build Command: pip install -r requirements.txt
 Start Command: uvicorn main:app --host 0.0.0.0 --port $PORT
 ```
 
-Add these environment variables in Render:
+Set Render environment variables:
 
 ```env
-APP_NAME=AgentFlow
-APP_VERSION=0.1.0
 ENVIRONMENT=production
-
-GROQ_API_KEY=your_groq_api_key_here
-GROQ_MODEL=llama-3.1-8b-instant
-
-SQLITE_DB_PATH=agentflow.db
-HUMAN_REVIEW_SCORE_THRESHOLD=7
-
-ALLOWED_ORIGINS=https://your-vercel-frontend-url.vercel.app
+LLM_PROVIDER=groq
+GROQ_API_KEY=your_real_key
+ALLOWED_ORIGINS=https://your-vercel-app.vercel.app
+ALLOWED_ORIGIN_REGEX=^https://.*\.vercel\.app$
 ```
 
-After deployment, test:
+For full semantic embeddings on a larger instance, use this build command instead:
 
 ```txt
-https://your-render-backend-url.onrender.com/health
+pip install -r requirements-embeddings.txt
 ```
 
-Swagger docs:
+SQLite note: Render's free filesystem can be ephemeral. For a portfolio demo this is acceptable, but for durable production data use a persistent Render disk or migrate to Postgres/pgvector.
 
-```txt
-https://your-render-backend-url.onrender.com/docs
-```
+This repo also includes `render.yaml` as a safe starter blueprint. It marks `GROQ_API_KEY` and `ALLOWED_ORIGINS` as dashboard-provided values, so secrets are not committed.
 
----
+### Vercel Frontend
 
-### Frontend Deployment on Vercel
-
-Create a new Vercel project.
-
-Use these settings:
+Create a Vercel project with:
 
 ```txt
 Root Directory: frontend
@@ -1058,89 +273,52 @@ Build Command: npm run build
 Output Directory: dist
 ```
 
-Add this environment variable in Vercel:
+Set Vercel environment variables:
 
 ```env
-VITE_API_BASE_URL=https://your-render-backend-url.onrender.com
+VITE_API_BASE_URL=https://your-render-service.onrender.com
 ```
 
-After deployment, update Render backend `ALLOWED_ORIGINS` with your Vercel frontend URL.
+After Vercel deploys, add the Vercel domain to the Render backend `ALLOWED_ORIGINS`.
 
-Example:
+The frontend also includes `frontend/vercel.json` with the Vite build and output settings.
 
-```env
-ALLOWED_ORIGINS=https://agentflow.vercel.app
+## Verification
+
+Backend:
+
+```bash
+cd backend
+source venv/bin/activate
+python -m unittest discover -s tests -v
+python -m compileall app main.py
 ```
 
-For local + production:
+Frontend:
 
-```env
-ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5174,https://agentflow.vercel.app
+```bash
+cd frontend
+npm run lint
+npm test
+npm run build
 ```
 
----
+## Public Repo Safety Checklist
 
-## Note About SQLite
+- Real `.env` files are ignored.
+- Local SQLite databases and WAL/SHM files are ignored.
+- `node_modules`, `dist`, Python caches, logs, and local tool folders are ignored.
+- Only `.env.example` files are committed.
+- Production CORS should be restricted to the deployed Vercel domain.
+- API keys should be rotated immediately if they were ever shared in a terminal, screenshot, chat, or commit.
 
-This project currently uses SQLite for simplicity and beginner-friendly local development.
+## Portfolio Talking Points
 
-SQLite is good for:
-
-- Local development
-- Portfolio demo
-- Simple run history
-- Learning database persistence
-
-For production deployment, PostgreSQL or Supabase is recommended because free hosting platforms may not persist SQLite files permanently after restarts or redeployments.
-
-Recommended future upgrade:
-
-```txt
-SQLite → PostgreSQL / Supabase
-```
-
----
-
-## Privacy and Workspace Isolation
-
-AgentFlow includes browser-level workspace isolation to make deployed usage safer.
-
-When a user opens the app, the frontend creates a workspace ID and stores it in browser `localStorage`.
-
-Example:
-
-```txt
-workspace_abc123
-```
-
-Every scoped API request includes:
-
-```txt
-X-Workspace-Id: workspace_abc123
-```
-
-The backend stores this workspace ID with runs and memories.
-
-This ensures:
-
-- User A sees only User A's run history
-- User B sees only User B's memories
-- Pending reviews are workspace-specific
-- Memory extraction does not leak across users
-- Deployed demo users do not share the same global history
-
----
-
-## Suggested Tech Stack Line
-
-```txt
-Python, FastAPI, LangGraph, LangChain, Groq, React, Vite, Tailwind CSS, SQLite, Pydantic, Render, Vercel
-```
-
----
+- This is not just a chatbot; it is a stateful agent workflow with routing, tools, memory, review, and traceability.
+- The frontend separates direct chat from structured agent execution, making the product mental model clearer.
+- The backend demonstrates practical production concerns: retries, rate limiting, streaming, logging, CORS, workspace scoping, and deployment hygiene.
+- The architecture is intentionally compact enough for a portfolio project while leaving clear upgrade paths to auth, Postgres/pgvector, queues, and hosted observability.
 
 ## Author
 
 Built by **Jatin Shukla**.
-
----

@@ -1,11 +1,24 @@
 import unittest
 from unittest.mock import patch
 
+from fastapi import Request
+
 from app.routers.agent_router import submit_human_review
 from app.schemas.agent_schema import HumanReviewRequest
 
 
-class SubmitHumanReviewTests(unittest.TestCase):
+def build_request() -> Request:
+    return Request(
+        {
+            "type": "http",
+            "method": "POST",
+            "path": "/agent/runs/run-123/human-review",
+            "headers": [],
+        }
+    )
+
+
+class SubmitHumanReviewTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.workspace_id = "workspace-123"
         self.run_id = "run-123"
@@ -21,7 +34,7 @@ class SubmitHumanReviewTests(unittest.TestCase):
     @patch("app.routers.agent_router.extract_and_save_memories_from_run")
     @patch("app.routers.agent_router.update_agent_run_after_human_review")
     @patch("app.routers.agent_router.get_agent_run_by_id")
-    def test_approve_extracts_memories_for_completed_run(
+    async def test_approve_extracts_memories_for_completed_run(
         self,
         mock_get_run,
         mock_update_run,
@@ -33,7 +46,8 @@ class SubmitHumanReviewTests(unittest.TestCase):
         mock_update_run.return_value = updated_run
         mock_build_response.return_value = {"status": "COMPLETED"}
 
-        response = submit_human_review(
+        response = await submit_human_review(
+            build_request(),
             self.run_id,
             HumanReviewRequest(action="approve"),
             self.workspace_id,
@@ -41,16 +55,16 @@ class SubmitHumanReviewTests(unittest.TestCase):
 
         self.assertEqual(response, {"status": "COMPLETED"})
         mock_extract_memories.assert_called_once_with(
-            run=updated_run,
-            run_id=self.run_id,
-            workspace_id=self.workspace_id,
+            updated_run,
+            self.run_id,
+            self.workspace_id,
         )
 
     @patch("app.routers.agent_router._build_agent_run_response")
     @patch("app.routers.agent_router.extract_and_save_memories_from_run")
     @patch("app.routers.agent_router.update_agent_run_after_human_review")
     @patch("app.routers.agent_router.get_agent_run_by_id")
-    def test_reject_skips_memory_extraction(
+    async def test_reject_skips_memory_extraction(
         self,
         mock_get_run,
         mock_update_run,
@@ -62,7 +76,8 @@ class SubmitHumanReviewTests(unittest.TestCase):
         mock_update_run.return_value = updated_run
         mock_build_response.return_value = {"status": "REJECTED"}
 
-        response = submit_human_review(
+        response = await submit_human_review(
+            build_request(),
             self.run_id,
             HumanReviewRequest(action="reject", feedback="Not useful enough."),
             self.workspace_id,

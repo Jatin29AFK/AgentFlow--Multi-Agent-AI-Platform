@@ -7,6 +7,7 @@ class MemoryCreateRequest(BaseModel):
     content: str = Field(
         ...,
         min_length=3,
+        max_length=2000,
         description="Memory content to save."
     )
     tags: Optional[List[str]] = Field(
@@ -32,5 +33,5 @@ class MemoryResponse(BaseModel):
 
 
 class MemorySearchResponse(MemoryResponse):
-    search_score: int
+    search_score: float
     matched_terms: List[str]

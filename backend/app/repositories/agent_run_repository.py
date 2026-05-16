@@ -38,7 +38,7 @@ def save_agent_run(result: Dict[str, Any], workspace_id: str) -> Dict[str, str]:
     Saves one full agent workflow run into SQLite.
     Returns run_id and created_at.
     """
-    run_id = str(uuid.uuid4())
+    run_id = result.get("run_id") or str(uuid.uuid4())
     created_at = datetime.now(timezone.utc).isoformat()
 
     trace = result.get("trace", [])
@@ -114,7 +114,13 @@ def save_agent_run(result: Dict[str, Any], workspace_id: str) -> Dict[str, str]:
         "created_at": created_at,
     }
 
-def list_agent_runs(workspace_id: str, limit: int = 20) -> List[Dict[str, Any]]:
+def list_agent_runs(
+    workspace_id: str,
+    limit: int = 20,
+    offset: int = 0,
+    query: str = "",
+    status: str = "all",
+) -> List[Dict[str, Any]]:
     """
     Returns recent agent runs.
     Only returns summary-level fields.
@@ -122,8 +128,33 @@ def list_agent_runs(workspace_id: str, limit: int = 20) -> List[Dict[str, Any]]:
     connection = get_connection()
     cursor = connection.cursor()
 
+    filters = ["workspace_id = ?"]
+    params: list[Any] = [workspace_id]
+
+    normalized_query = query.strip()
+    if normalized_query:
+        filters.append(
+            """
+            (
+                task LIKE ?
+                OR selected_agent LIKE ?
+                OR tool_name LIKE ?
+                OR status LIKE ?
+                OR final_answer LIKE ?
+            )
+            """
+        )
+        like_query = f"%{normalized_query}%"
+        params.extend([like_query, like_query, like_query, like_query, like_query])
+
+    if status.strip() and status != "all":
+        filters.append("status = ?")
+        params.append(status)
+
+    params.extend([limit, offset])
+
     cursor.execute(
-        """
+        f"""
         SELECT
             id,
             task,
@@ -135,11 +166,12 @@ def list_agent_runs(workspace_id: str, limit: int = 20) -> List[Dict[str, Any]]:
             needs_human_review,
             created_at
         FROM agent_runs
-        WHERE workspace_id = ?
+        WHERE {" AND ".join(filters)}
         ORDER BY created_at DESC
         LIMIT ?
+        OFFSET ?
         """,
-        (workspace_id, limit),
+        params,
     )
 
     rows = cursor.fetchall()

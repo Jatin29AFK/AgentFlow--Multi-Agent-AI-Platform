@@ -2,6 +2,7 @@ from typing import List, Optional, TypedDict
 
 
 class AgentState(TypedDict):
+    run_id: str
     task: str
     workspace_id: str
 
@@ -16,6 +17,9 @@ class AgentState(TypedDict):
     tool_input: str
     tool_result: str
     tool_used: bool
+    should_use_tool: bool
+    tool_iterations: int
+    tool_history: List[str]
 
     execution_result: str
     review: str

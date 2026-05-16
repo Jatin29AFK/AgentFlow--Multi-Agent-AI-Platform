@@ -25,7 +25,10 @@ def build_memory_context(
     memory_lines = []
 
     for index, memory in enumerate(memories, start=1):
-        memory_lines.append(f"{index}. {memory['content']}")
+        memory_lines.append(
+            f"{index}. {memory['content']} "
+            f"(relevance={memory.get('search_score', 0)})"
+        )
 
     memory_context = "Relevant long-term memories:\n" + "\n".join(memory_lines)
 
@@ -81,7 +84,7 @@ def extract_and_save_memories_from_run(
     if run.get("status") != "COMPLETED":
         return []
 
-    llm = LLMService()
+    llm = LLMService(role="memory")
 
     system_prompt = """
 You are the Memory Extraction Agent in AgentFlow.

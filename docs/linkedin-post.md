@@ -1,31 +1,33 @@
 # LinkedIn Post Draft
 
-I built **AgentFlow**, a full-stack **multi-agent AI orchestration platform** with **FastAPI, LangGraph, Groq, React, and SQLite**.
+I built AgentFlow, a full-stack multi-agent AI orchestration platform that goes beyond a basic chatbot.
 
-Instead of stopping at a single LLM call, this project runs tasks through a structured workflow:
+Instead of sending a prompt directly to one model, AgentFlow runs a structured workflow:
 
-- memory retrieval
-- supervisor routing
-- specialist agent execution
-- tool usage
-- reviewer scoring
-- human-in-the-loop approval
-- traceable run history
+- Retrieves relevant long-term memory
+- Routes the task through a supervisor agent
+- Uses backend tools when useful
+- Sends the task to a specialist agent
+- Reviews and scores the output
+- Sends low-confidence runs to human review
+- Streams progress to the UI in real time
+- Stores searchable run history and reusable memory
 
-The goal was to explore what a more realistic AI product looks like beyond a simple chatbot UI.
+Tech stack:
 
-Some parts I’m especially happy with:
+Python, FastAPI, LangGraph, LangChain, React, Vite, Tailwind CSS, SQLite, Groq/OpenAI/Ollama provider abstraction, Render, and Vercel.
 
-- workspace-scoped memory and run isolation for safer public demos
-- a reviewer layer that scores outputs before finalization
-- a human review queue for low-confidence runs
-- a chat playground alongside the full agent workflow
-- an end-to-end dashboard for traces, history, memory, and reviews
+Some engineering details I focused on:
 
-Live demo:
-- Frontend: https://agent-flow-five-phi.vercel.app
-- Backend: https://agentflow-mlmp.onrender.com
+- Server-Sent Events for live workflow updates
+- Semantic memory with optional sentence-transformer embeddings
+- Tool-loop guardrails so tools are used only when they fit the task
+- Human-in-the-loop review flow
+- Workspace-scoped history and memory for safer public demos
+- Structured logging, retries, rate limiting, CORS, and deployment-ready env templates
+- A cleaner React architecture split into focused components and hooks
 
-I’d love feedback from people building agent systems, AI products, or workflow tooling.
+This project helped me practice the product and systems side of AI engineering: not just calling an LLM, but designing an observable, reviewable, and deployable agent workflow.
 
-#AIEngineering #GenerativeAI #LLM #LangGraph #FastAPI #React #AIProducts
+GitHub: <add repo link>
+Live demo: <add Vercel link>

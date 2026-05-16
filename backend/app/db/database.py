@@ -22,8 +22,15 @@ def get_connection():
     Creates a SQLite connection.
     row_factory lets us access rows like dictionaries.
     """
-    connection = sqlite3.connect(get_db_path())
+    connection = sqlite3.connect(
+        get_db_path(),
+        timeout=30,
+        check_same_thread=False,
+    )
     connection.row_factory = sqlite3.Row
+    connection.execute("PRAGMA journal_mode=WAL")
+    connection.execute("PRAGMA synchronous=NORMAL")
+    connection.execute("PRAGMA foreign_keys=ON")
     return connection
 
 
@@ -167,6 +174,7 @@ def init_db():
             source_run_id TEXT,
             tags_json TEXT DEFAULT '[]',
             importance INTEGER DEFAULT 3,
+            embedding_json TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
@@ -178,6 +186,13 @@ def init_db():
         "agent_memories",
         "workspace_id",
         "TEXT DEFAULT 'default-workspace'"
+    )
+
+    _add_column_if_missing(
+        cursor,
+        "agent_memories",
+        "embedding_json",
+        "TEXT"
     )
 
     connection.commit()

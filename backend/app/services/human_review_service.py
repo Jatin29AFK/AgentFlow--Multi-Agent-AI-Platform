@@ -14,7 +14,7 @@ def generate_revised_answer_with_human_feedback(
     Human says: Make it shorter and more professional.
     This function asks the LLM to create improved final answer.
     """
-    llm = LLMService()
+    llm = LLMService(role="specialist")
 
     system_prompt = """
 You are the Human Review Revision Agent in AgentFlow.

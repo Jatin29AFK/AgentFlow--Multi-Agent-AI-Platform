@@ -1,17 +1,15 @@
 # AgentFlow Backend
 
-AgentFlow is a multi-agent AI orchestration backend built with FastAPI, LangGraph, Groq, SQLite, tool use, memory, human review, and trace history.
+FastAPI backend for AgentFlow's multi-agent orchestration workflow.
 
-## Features
+## What It Does
 
-- Supervisor agent routing
-- Specialist agents: research, code, writing, analysis
-- Tool registry: calculator, text stats, keyword extractor
-- Reviewer scoring
-- Human-in-the-loop review
-- SQLite run history
-- Long-term memory
-- FastAPI Swagger docs
+- Runs a LangGraph workflow with memory retrieval, supervisor routing, tool execution, specialist generation, reviewer scoring, and finalization.
+- Streams workflow progress through Server-Sent Events at `/agent/run/stream`.
+- Supports Groq, OpenAI, and Ollama through one `LLMService` abstraction.
+- Stores run history, human review state, and long-term memory in SQLite.
+- Uses optional sentence-transformer embeddings for semantic memory and falls back to lexical search when the optional package is not installed.
+- Adds production-minded basics: request IDs, structured logs, retry handling, rate limiting, CORS config, SQLite WAL mode, and optional review webhooks.
 
 ## Local Setup
 
@@ -19,18 +17,53 @@ AgentFlow is a multi-agent AI orchestration backend built with FastAPI, LangGrap
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env
 uvicorn main:app --reload
+```
 
-## CORS for deployed frontend
+Set at least one LLM provider key in `.env`:
 
-For a Vercel frontend talking to this backend, configure these env vars on the
-backend service:
+```env
+LLM_PROVIDER=groq
+GROQ_API_KEY=your_groq_api_key_here
+```
+
+Optional semantic embeddings:
 
 ```bash
-ALLOWED_ORIGINS=https://your-production-domain.vercel.app
+pip install -r requirements-embeddings.txt
+```
+
+## Useful URLs
+
+- API root: `http://127.0.0.1:8000`
+- Health: `http://127.0.0.1:8000/health`
+- Swagger docs: `http://127.0.0.1:8000/docs`
+
+## Render Deployment
+
+```txt
+Root Directory: backend
+Build Command: pip install -r requirements.txt
+Start Command: uvicorn main:app --host 0.0.0.0 --port $PORT
+```
+
+For full semantic embeddings on a larger Render instance:
+
+```txt
+Build Command: pip install -r requirements-embeddings.txt
+```
+
+Production CORS example:
+
+```env
+ALLOWED_ORIGINS=https://your-vercel-app.vercel.app
 ALLOWED_ORIGIN_REGEX=^https://.*\.vercel\.app$
 ```
 
-`ALLOWED_ORIGINS` is useful for exact production domains. `ALLOWED_ORIGIN_REGEX`
-lets Vercel preview deployments work without updating the backend for each new
-preview URL.
+## Tests
+
+```bash
+python -m unittest discover -s tests -v
+python -m compileall app main.py
+```

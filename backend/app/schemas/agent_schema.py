@@ -7,6 +7,7 @@ class AgentRunRequest(BaseModel):
     task: str = Field(
         ...,
         min_length=5,
+        max_length=2000,
         description="Complex task that AgentFlow should route to the right specialist agent."
     )
 
@@ -62,5 +63,6 @@ class HumanReviewRequest(BaseModel):
     )
     feedback: Optional[str] = Field(
         default=None,
+        max_length=2000,
         description="Optional human feedback. Required for revise. Recommended for reject."
     )
